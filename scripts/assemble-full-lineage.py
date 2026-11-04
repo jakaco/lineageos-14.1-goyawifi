@@ -3,7 +3,8 @@
 from pathlib import Path
 import gzip,hashlib,json,os,re,shutil,struct,subprocess
 R=Path(os.environ.get('ANDROID7_BUILD_ROOT','/mnt/android7-jbuild'));W=Path(os.environ.get('GOYAWIFI_WORK_DIR','/path/to/local-work-overlays'));
-assert W.is_dir(), 'Set GOYAWIFI_WORK_DIR to the locally prepared hardware overlays'P=R/'src/out/target/product/goyawifi';A=P/'goya-full-assembly';S=A/'system';O=W/'full-lineage';O.mkdir(exist_ok=True)
+assert W.is_dir(), 'Set GOYAWIFI_WORK_DIR to the locally prepared hardware overlays'
+P=R/'src/out/target/product/goyawifi';A=P/'goya-full-assembly';S=A/'system';O=W/'full-lineage';O.mkdir(exist_ok=True)
 assert (P/'system.img').is_file(),'Full systemimage has not finished'
 assert not S.exists(),'Use a fresh assembly directory; preserve the existing candidate'
 A.mkdir(exist_ok=True)
