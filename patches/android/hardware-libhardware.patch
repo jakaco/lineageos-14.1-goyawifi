@@ -1,0 +1,30 @@
+diff --git a/include/hardware/hwcomposer.h b/include/hardware/hwcomposer.h
+index 28877e1..3236f30 100644
+--- a/include/hardware/hwcomposer.h
++++ b/include/hardware/hwcomposer.h
+@@ -153,6 +153,11 @@ typedef struct hwc_layer_1 {
+ 
+             /* blending to apply during composition */
+             int32_t blending;
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++            // Stock Marvell ABI stores global alpha as a 32-bit word here.
++            uint32_t goyawifiPlaneAlpha;
++#endif
++
+ 
+             /* area of the source to consider, the origin is the top-left corner of
+              * the buffer. As of HWC_DEVICE_API_VERSION_1_3, sourceRect uses floats.
+@@ -305,8 +310,13 @@ typedef struct hwc_layer_1 {
+      * For 32-bit mode, this struct is 96 bytes, and needs to be padded as such
+      * to maintain binary compatibility.
+      */
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    /* Exact SM-T110 HWC 1.2 binary advances 100 bytes per ARM32 layer. */
++    uint8_t reserved[100 - 88];
++#else
+     uint8_t reserved[96 - 84];
+ #endif
++#endif
+ 
+ } hwc_layer_1_t;
+ 

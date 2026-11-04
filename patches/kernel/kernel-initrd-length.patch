@@ -1,0 +1,38 @@
+diff --git a/arch/arm/mm/init.c b/arch/arm/mm/init.c
+index 32280836..3aa1a7e2 100644
+--- a/arch/arm/mm/init.c
++++ b/arch/arm/mm/init.c
+@@ -39,6 +39,18 @@
+ static unsigned long phys_initrd_start __initdata = 0;
+ static unsigned long phys_initrd_size __initdata = 0;
+ 
++/* The goyawifi loader supplies a fixed 16 MiB initrd span. The packer
++ * records the actual compressed archive length in a dedicated argument.
++ * Never change its address or enlarge the loader-provided memory span.
++ */
++static unsigned long goyawifi_initrd_size __initdata;
++static int __init early_goyawifi_initrd_size(char *p)
++{
++	goyawifi_initrd_size = memparse(p, NULL);
++	return 0;
++}
++early_param("goyawifi.initrd_size", early_goyawifi_initrd_size);
++
+ static int __init early_initrd(char *p)
+ {
+ 	unsigned long start, size;
+@@ -350,6 +362,14 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
+ 	memblock_reserve(__pa(_stext), _end - _stext);
+ #endif
+ #ifdef CONFIG_BLK_DEV_INITRD
++	if (goyawifi_initrd_size && goyawifi_initrd_size < phys_initrd_size) {
++		pr_info("goyawifi: initrd span %lu -> %lu bytes\n",
++			phys_initrd_size, goyawifi_initrd_size);
++		phys_initrd_size = goyawifi_initrd_size;
++	} else if (goyawifi_initrd_size) {
++		pr_warn("goyawifi: ignoring non-shrinking initrd override %lu\n",
++			goyawifi_initrd_size);
++	}
+ 	if (phys_initrd_size &&
+ 	    !memblock_is_region_memory(phys_initrd_start, phys_initrd_size)) {
+ 		pr_err("INITRD: 0x%08lx+0x%08lx is not a memory region - disabling initrd\n",

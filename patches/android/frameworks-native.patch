@@ -1,0 +1,523 @@
+diff --git a/cmds/installd/Android.mk b/cmds/installd/Android.mk
+index 86df596..77a6d16 100644
+--- a/cmds/installd/Android.mk
++++ b/cmds/installd/Android.mk
+@@ -2,6 +2,9 @@ LOCAL_PATH := $(call my-dir)
+ 
+ common_src_files := commands.cpp globals.cpp utils.cpp
+ common_cflags := -Wall -Werror
++ifeq ($(GOYAWIFI_INIT_BRINGUP_NO_SELINUX),true)
++common_cflags += -DGOYAWIFI_RAM_BRINGUP=1
++endif
+ 
+ #
+ # Static library used in testing and executable
+diff --git a/cmds/installd/commands.cpp b/cmds/installd/commands.cpp
+index cadcd1e..7a2fc8c 100644
+--- a/cmds/installd/commands.cpp
++++ b/cmds/installd/commands.cpp
+@@ -105,6 +105,10 @@ static std::string create_primary_profile(const std::string& profile_dir) {
+  * significant time by avoiding no-op traversals of large filesystem trees.
+  */
+ static int restorecon_app_data_lazy(const std::string& path, const char* seinfo, uid_t uid) {
++#ifdef GOYAWIFI_RAM_BRINGUP
++    // GOYAWIFI: labeling is unavailable when SELinux is disabled.
++    if (is_selinux_enabled() <= 0) return 0;
++#endif
+     int res = 0;
+     char* before = nullptr;
+     char* after = nullptr;
+@@ -246,6 +250,11 @@ int migrate_app_data(const char *uuid, const char *pkgname, userid_t userid, int
+         const char *data_path = (flags & FLAG_STORAGE_DE) && !stat(de_path.c_str(), &s)
+                 ? de_path.c_str() : ce_path.c_str();
+         if (setxattr(data_path, kXattrDefault, nullptr, 0, 0) != 0) {
++#ifdef GOYAWIFI_RAM_BRINGUP
++            // GOYAWIFI: RAM tmpfs on this 3.4 kernel has no user xattrs.
++            // Preserve current CE/DE locations; no on-disk migration is possible.
++            if (errno == EOPNOTSUPP) return 0;
++#endif
+             PLOG(ERROR) << "Failed to mark default storage " << data_path;
+             return -1;
+         }
+diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
+index d423d12..bda8701 100644
+--- a/libs/gui/Surface.cpp
++++ b/libs/gui/Surface.cpp
+@@ -34,6 +34,7 @@
+ #include <gui/SurfaceComposerClient.h>
+ #include <gui/GLConsumer.h>
+ #include <gui/Surface.h>
++#include <cutils/properties.h>
+ 
+ #include <private/gui/ComposerService.h>
+ 
+@@ -176,19 +177,25 @@ int Surface::hook_setSwapInterval(ANativeWindow* window, int interval) {
+ int Surface::hook_dequeueBuffer(ANativeWindow* window,
+         ANativeWindowBuffer** buffer, int* fenceFd) {
+     Surface* c = getSelf(window);
+-    return c->dequeueBuffer(buffer, fenceFd);
++    int result = c->dequeueBuffer(buffer, fenceFd);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p dequeueBuffer buf=%p ret=%d", window, (result == OK ? *buffer : nullptr), result);
++    return result;
+ }
+ 
+ int Surface::hook_cancelBuffer(ANativeWindow* window,
+         ANativeWindowBuffer* buffer, int fenceFd) {
+     Surface* c = getSelf(window);
+-    return c->cancelBuffer(buffer, fenceFd);
++    int result = c->cancelBuffer(buffer, fenceFd);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p cancelBuffer buf=%p ret=%d", window, buffer, result);
++    return result;
+ }
+ 
+ int Surface::hook_queueBuffer(ANativeWindow* window,
+         ANativeWindowBuffer* buffer, int fenceFd) {
+     Surface* c = getSelf(window);
+-    return c->queueBuffer(buffer, fenceFd);
++    int result = c->queueBuffer(buffer, fenceFd);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p queueBuffer buf=%p ret=%d", window, buffer, result);
++    return result;
+ }
+ 
+ int Surface::hook_dequeueBuffer_DEPRECATED(ANativeWindow* window,
+@@ -197,6 +204,25 @@ int Surface::hook_dequeueBuffer_DEPRECATED(ANativeWindow* window,
+     ANativeWindowBuffer* buf;
+     int fenceFd = -1;
+     int result = c->dequeueBuffer(&buf, &fenceFd);
++    // Goyawifi's stock EGL queues on a worker after returning from eglSwapBuffers.
++    // Preserve Nougat's queue bound, but let that worker return a buffer first.
++    if (result == INVALID_OPERATION &&
++            property_get_bool("ro.goya.legacy_egl_queue", false)) {
++        const nsecs_t deadline = systemTime(SYSTEM_TIME_MONOTONIC) + ms2ns(100);
++        do {
++            {
++                Mutex::Autolock lock(c->mMutex);
++                c->mQueueBufferCondition.waitRelative(c->mMutex, ms2ns(5));
++            }
++            result = c->dequeueBuffer(&buf, &fenceFd);
++        } while (result == INVALID_OPERATION &&
++                systemTime(SYSTEM_TIME_MONOTONIC) < deadline);
++        if (property_get_bool("debug.goya.buffer", false)) {
++            ALOGI("GOYA_BUF %p legacy_queue_wait result=%d", window, result);
++        }
++    }
++
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p legacy_dequeueBuffer buf=%p ret=%d", window, (result == OK ? buf : nullptr), result);
+     if (result != OK) {
+         return result;
+     }
+@@ -215,7 +241,9 @@ int Surface::hook_dequeueBuffer_DEPRECATED(ANativeWindow* window,
+ int Surface::hook_cancelBuffer_DEPRECATED(ANativeWindow* window,
+         ANativeWindowBuffer* buffer) {
+     Surface* c = getSelf(window);
+-    return c->cancelBuffer(buffer, -1);
++    int result = c->cancelBuffer(buffer, -1);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p legacy_cancelBuffer buf=%p ret=%d", window, buffer, result);
++    return result;
+ }
+ 
+ int Surface::hook_lockBuffer_DEPRECATED(ANativeWindow* window,
+@@ -227,13 +255,17 @@ int Surface::hook_lockBuffer_DEPRECATED(ANativeWindow* window,
+ int Surface::hook_queueBuffer_DEPRECATED(ANativeWindow* window,
+         ANativeWindowBuffer* buffer) {
+     Surface* c = getSelf(window);
+-    return c->queueBuffer(buffer, -1);
++    int result = c->queueBuffer(buffer, -1);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p legacy_queueBuffer buf=%p ret=%d", window, buffer, result);
++    return result;
+ }
+ 
+ int Surface::hook_query(const ANativeWindow* window,
+                                 int what, int* value) {
+     const Surface* c = getSelf(window);
+-    return c->query(what, value);
++    int result = c->query(what, value);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p query what=%d value=%d ret=%d", window, what, (result == OK ? *value : -1), result);
++    return result;
+ }
+ 
+ int Surface::hook_perform(ANativeWindow* window, int operation, ...) {
+@@ -242,6 +274,7 @@ int Surface::hook_perform(ANativeWindow* window, int operation, ...) {
+     Surface* c = getSelf(window);
+     int result = c->perform(operation, args);
+     va_end(args);
++    if (property_get_bool("debug.goya.buffer", false)) ALOGI("GOYA_BUF %p perform op=%d ret=%d", window, operation, result);
+     return result;
+ }
+ 
+diff --git a/services/surfaceflinger/Android.mk b/services/surfaceflinger/Android.mk
+index 18cc946..14510a6 100644
+--- a/services/surfaceflinger/Android.mk
++++ b/services/surfaceflinger/Android.mk
+@@ -52,6 +52,10 @@ endif
+ 
+ LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES -DEGL_EGLEXT_PROTOTYPES
+ 
++ifeq ($(GOYAWIFI_HWC_LAYER_STRIDE_100),true)
++LOCAL_CFLAGS += -DGOYAWIFI_HWC_LAYER_STRIDE_100
++endif
++
+ ifeq ($(TARGET_USES_HWC2),true)
+     LOCAL_CFLAGS += -DUSE_HWC2
+     LOCAL_SRC_FILES += \
+diff --git a/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp b/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
+index 18c7945..8f68742 100644
+--- a/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
++++ b/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp
+@@ -23,6 +23,11 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <errno.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++#include <cutils/properties.h>
++#include <utils/Timers.h>
+ 
+ #include <cutils/log.h>
+ 
+@@ -55,6 +60,69 @@ namespace android {
+  *
+  */
+ 
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++// The old HAL supplies no scanout-retirement fence. Delay recycling the old
++// target until the replacement has crossed vblank, without blocking GL work.
++class FramebufferSurface::GoyaRetireThread : public Thread {
++    FramebufferSurface* mOwner;
++    int mFd;
++    Mutex mJobMutex;
++    Condition mJobReady;
++    Vector<GoyaRetiredBuffer> mJobs;
++    bool threadLoop() override {
++        Vector<GoyaRetiredBuffer> jobs;
++        {
++            Mutex::Autolock lock(mJobMutex);
++            while (mJobs.isEmpty() && !exitPending()) mJobReady.wait(mJobMutex);
++            if (exitPending()) return false;
++            jobs = mJobs;
++            mJobs.clear();
++        }
++        nsecs_t start = systemTime(SYSTEM_TIME_MONOTONIC);
++        // Exact downstream ABI: _IO('m',18), SYNC_SELF=0.
++        int result = ioctl(mFd, _IO('m',18), 0);
++        nsecs_t elapsed = systemTime(SYSTEM_TIME_MONOTONIC)-start;
++        ALOGW_IF(result || elapsed>ms2ns(40),
++                "GOYA_RETIRE vblank result=%d elapsed_us=%lld",result,
++                (long long)(elapsed/1000));
++        {
++            Mutex::Autolock lock(mOwner->mMutex);
++            for (size_t i=0;i<jobs.size();++i) {
++                const GoyaRetiredBuffer& item=jobs[i];
++                status_t rc=mOwner->releaseBufferLocked(item.slot,item.buffer,
++                        EGL_NO_DISPLAY,EGL_NO_SYNC_KHR);
++                ALOGE_IF(rc<0,"GOYA_RETIRE release slot=%d status=%d",item.slot,rc);
++                --mOwner->mGoyaOutstandingRetire;
++                ++mOwner->mGoyaRetiredTotal;
++                mOwner->mGoyaRetireLastUs=elapsed/1000;
++                if(elapsed/1000>mOwner->mGoyaRetireMaxUs)mOwner->mGoyaRetireMaxUs=elapsed/1000;
++            }
++            mOwner->mGoyaRetireDone.broadcast();
++        }
++        return true;
++    }
++public:
++    explicit GoyaRetireThread(FramebufferSurface* owner)
++        : mOwner(owner),mFd(open("/dev/graphics/fb0",O_RDONLY|O_CLOEXEC)) {}
++    ~GoyaRetireThread() override { if(mFd>=0)close(mFd); }
++    bool available() const { return mFd>=0; }
++    void enqueue(const Vector<GoyaRetiredBuffer>& jobs) {
++        Mutex::Autolock lock(mJobMutex);mJobs.appendVector(jobs);mJobReady.signal();
++    }
++    void stop() {
++        requestExit();
++        { Mutex::Autolock lock(mJobMutex);mJobReady.signal(); }
++        requestExitAndWait();
++    }
++};
++#endif
++
++FramebufferSurface::~FramebufferSurface() {
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    if(mGoyaRetireThread!=nullptr)mGoyaRetireThread->stop();
++#endif
++}
++
+ FramebufferSurface::FramebufferSurface(HWComposer& hwc, int disp,
+         const sp<IGraphicBufferConsumer>& consumer) :
+     ConsumerBase(consumer),
+@@ -89,6 +157,16 @@ FramebufferSurface::FramebufferSurface(HWComposer& hwc, int disp,
+     mConsumer->setDefaultBufferSize(mHwc.getWidth(disp), mHwc.getHeight(disp));
+ #endif
+     mConsumer->setMaxAcquiredBufferCount(NUM_FRAMEBUFFER_SURFACE_BUFFERS - 1);
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    if (mDisplayType==0) {
++        mGoyaRetireThread=new GoyaRetireThread(this);
++        if(!mGoyaRetireThread->available() ||
++                mGoyaRetireThread->run("GoyaFbRetire",PRIORITY_URGENT_DISPLAY)!=NO_ERROR) {
++            ALOGE("GOYA_RETIRE worker unavailable");mGoyaRetireThread.clear();
++        }
++    }
++#endif
++
+ }
+ 
+ status_t FramebufferSurface::beginFrame(bool /*mustRecompose*/) {
+@@ -131,6 +209,16 @@ status_t FramebufferSurface::nextBuffer(sp<GraphicBuffer>& outBuffer, sp<Fence>&
+ #endif
+     Mutex::Autolock lock(mMutex);
+ 
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    // Consume the documented one-extra-buffer allowance only until vblank.
++    const nsecs_t deadline=systemTime(SYSTEM_TIME_MONOTONIC)+ms2ns(120);
++    while(mGoyaOutstandingRetire) {
++        nsecs_t left=deadline-systemTime(SYSTEM_TIME_MONOTONIC);
++        if(left<=0){ALOGE("GOYA_RETIRE stalled");return TIMED_OUT;}
++        mGoyaRetireDone.waitRelative(mMutex,left);
++    }
++#endif
++
+     BufferItem item;
+     status_t err = acquireBufferLocked(&item, 0);
+     if (err == BufferQueue::NO_BUFFER_AVAILABLE) {
+@@ -156,6 +244,16 @@ status_t FramebufferSurface::nextBuffer(sp<GraphicBuffer>& outBuffer, sp<Fence>&
+         mPreviousBufferSlot = mCurrentBufferSlot;
+         mPreviousBuffer = mCurrentBuffer;
+ #else
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++        if(mGoyaRetireThread!=nullptr && property_get_bool("debug.goya.fb_retire",false)
++                && mHwc.hasHwcComposition(mDisplayType)
++                && !mHwc.hasGlesComposition(mDisplayType)) {
++            GoyaRetiredBuffer item={mCurrentBufferSlot,mCurrentBuffer};
++            mGoyaPendingRetire.push_back(item);
++            ++mGoyaOutstandingRetire;
++        } else
++#endif
++        {
+         // Release the previous buffer.
+         err = releaseBufferLocked(mCurrentBufferSlot, mCurrentBuffer,
+                 EGL_NO_DISPLAY, EGL_NO_SYNC_KHR);
+@@ -163,6 +261,7 @@ status_t FramebufferSurface::nextBuffer(sp<GraphicBuffer>& outBuffer, sp<Fence>&
+             ALOGE("error releasing buffer: %s (%d)", strerror(-err), err);
+             return err;
+         }
++        }
+ #endif
+     }
+     mCurrentBufferSlot = item.mSlot;
+@@ -203,6 +302,15 @@ void FramebufferSurface::freeBufferLocked(int slotIndex) {
+ }
+ 
+ void FramebufferSurface::onFrameCommitted() {
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    Vector<GoyaRetiredBuffer> retire;
++    {
++        Mutex::Autolock lock(mMutex);
++        retire=mGoyaPendingRetire;mGoyaPendingRetire.clear();
++    }
++    if(!retire.isEmpty())mGoyaRetireThread->enqueue(retire);
++#endif
++
+ #ifdef USE_HWC2
+     if (mHasPendingRelease) {
+         sp<Fence> fence = mHwc.getRetireFence(mDisplayType);
+@@ -245,6 +353,13 @@ void FramebufferSurface::dumpAsString(String8& result) const {
+ 
+ void FramebufferSurface::dumpLocked(String8& result, const char* prefix) const
+ {
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    result.appendFormat("GOYA_RETIRE enabled=%d pending=%zu retired=%llu last_us=%lld max_us=%lld\n",
++            property_get_bool("debug.goya.fb_retire",false),mGoyaOutstandingRetire,
++            (unsigned long long)mGoyaRetiredTotal,(long long)mGoyaRetireLastUs,
++            (long long)mGoyaRetireMaxUs);
++#endif
++
+ #ifndef USE_HWC2
+     mHwc.fbDump(result);
+ #endif
+diff --git a/services/surfaceflinger/DisplayHardware/FramebufferSurface.h b/services/surfaceflinger/DisplayHardware/FramebufferSurface.h
+index 439435a..1374661 100644
+--- a/services/surfaceflinger/DisplayHardware/FramebufferSurface.h
++++ b/services/surfaceflinger/DisplayHardware/FramebufferSurface.h
+@@ -21,6 +21,9 @@
+ #include <sys/types.h>
+ 
+ #include <gui/ConsumerBase.h>
++#include <utils/Thread.h>
++#include <utils/Vector.h>
++#include <utils/Condition.h>
+ 
+ #include "DisplaySurface.h"
+ 
+@@ -55,7 +58,7 @@ public:
+     virtual const sp<Fence>& getClientTargetAcquireFence() const override;
+ 
+ private:
+-    virtual ~FramebufferSurface() { }; // this class cannot be overloaded
++    virtual ~FramebufferSurface(); // this class cannot be overloaded
+ 
+ #ifndef USE_HWC2
+     virtual void onFrameAvailable(const BufferItem& item);
+@@ -91,6 +94,18 @@ private:
+ 
+     // Hardware composer, owned by SurfaceFlinger.
+     HWComposer& mHwc;
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    struct GoyaRetiredBuffer { int slot; sp<GraphicBuffer> buffer; };
++    class GoyaRetireThread;
++    sp<GoyaRetireThread> mGoyaRetireThread;
++    Vector<GoyaRetiredBuffer> mGoyaPendingRetire;
++    size_t mGoyaOutstandingRetire = 0;
++    uint64_t mGoyaRetiredTotal = 0;
++    int64_t mGoyaRetireLastUs = 0;
++    int64_t mGoyaRetireMaxUs = 0;
++    Condition mGoyaRetireDone;
++#endif
++
+ 
+ #ifdef USE_HWC2
+     // Previous buffer to release after getting an updated retire fence
+diff --git a/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp b/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
+index 317f948..e0ccbf7 100644
+--- a/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWComposer_hwc1.cpp
+@@ -58,6 +58,29 @@
+ #endif
+ 
+ namespace android {
++static bool isGoyawifi2DComposition(int type) {
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    return type == 100 || type == 101;
++#else
++    (void)type;
++    return false;
++#endif
++}
++
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++static_assert(sizeof(hwc_layer_1_t) == 100, "Goyawifi vendor layer stride");
++static_assert(offsetof(hwc_layer_1_t, handle) == 12, "Vendor handle offset");
++static_assert(offsetof(hwc_layer_1_t, goyawifiPlaneAlpha) == 24, "Vendor global alpha offset");
++static_assert(offsetof(hwc_layer_1_t, sourceCropi) == 28, "Vendor crop offset");
++static_assert(offsetof(hwc_layer_1_t, displayFrame) == 44, "Vendor frame offset");
++static_assert(offsetof(hwc_layer_1_t, visibleRegionScreen) == 60, "Vendor region offset");
++static_assert(offsetof(hwc_layer_1_t, acquireFenceFd) == 68, "Vendor acquire fence offset");
++static_assert(offsetof(hwc_layer_1_t, releaseFenceFd) == 72, "Vendor release fence offset");
++static_assert(offsetof(hwc_layer_1_t, planeAlpha) == 76, "Vendor alpha offset");
++
++static_assert(offsetof(hwc_display_contents_1_t, hwLayers) == 20, "Vendor list header");
++#endif
++
+ 
+ #define MIN_HWC_HEADER_VERSION HWC_HEADER_VERSION
+ 
+@@ -390,8 +413,14 @@ status_t HWComposer::queryDisplayProperties(int disp) {
+     }
+     mDisplayData[disp].currentConfig = currentConfig;
+     for (size_t c = 0; c < numConfigs; ++c) {
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++        // Stock 1.2 does not report errors for unknown newer attributes.
++        err = mHwc->getDisplayAttributes(mHwc, disp, configs[c],
++                PRE_HWC15_DISPLAY_ATTRIBUTES, values);
++#else
+         err = mHwc->getDisplayAttributes(mHwc, disp, configs[c],
+                 DISPLAY_ATTRIBUTES, values);
++#endif
+         // If this is a pre-1.5 HWC, it may not know about color transform, so
+         // try again with a smaller set of attributes
+         if (err != NO_ERROR) {
+@@ -432,6 +461,12 @@ status_t HWComposer::queryDisplayProperties(int disp) {
+             }
+         }
+ 
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++        // Vendor reports integer DPI rather than the standardized milli-DPI.
++        if (config.xdpi > 0.0f && config.xdpi < 1.0f) config.xdpi *= 1000.0f;
++        if (config.ydpi > 0.0f && config.ydpi < 1.0f) config.ydpi *= 1000.0f;
++#endif
++
+         if (config.xdpi == 0.0f || config.ydpi == 0.0f) {
+             float dpi = getDefaultDensity(config.width, config.height);
+             config.xdpi = dpi;
+@@ -652,6 +687,9 @@ status_t HWComposer::createWorkList(int32_t id, size_t numLayers) {
+             disp.framebufferTarget->acquireFenceFd = -1;
+             disp.framebufferTarget->releaseFenceFd = -1;
+             disp.framebufferTarget->planeAlpha = 0xFF;
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++            disp.framebufferTarget->goyawifiPlaneAlpha = 0xFF;
++#endif
+         }
+         disp.list->retireFenceFd = -1;
+         disp.list->flags = HWC_GEOMETRY_CHANGED;
+@@ -718,6 +756,15 @@ status_t HWComposer::prepare() {
+         }
+     }
+ 
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++    // Diagnostic: refresh vendor cached regions while testing partial-frame artifacts.
++    if (property_get_bool("debug.goya.hwc_full", false)) {
++        for (size_t i=0; i<mNumDisplays; ++i) {
++            if (mLists[i]) mLists[i]->flags |= HWC_GEOMETRY_CHANGED;
++        }
++    }
++#endif
++
+     int err = mHwc->prepare(mHwc, mNumDisplays, mLists);
+     ALOGE_IF(err, "HWComposer: prepare failed (%s)", strerror(-err));
+ 
+@@ -746,7 +793,7 @@ status_t HWComposer::prepare() {
+                     if (l.compositionType == HWC_FRAMEBUFFER) {
+                         disp.hasFbComp = true;
+                     }
+-                    if (l.compositionType == HWC_OVERLAY) {
++                    if (l.compositionType == HWC_OVERLAY || isGoyawifi2DComposition(l.compositionType)) {
+                         disp.hasOvComp = true;
+                     }
+                     if (isCompositionTypeBlit(l.compositionType)) {
+@@ -1014,7 +1061,7 @@ public:
+           mSurfaceDamageRegions(surfaceDamageRegions) {}
+ 
+     virtual int32_t getCompositionType() const {
+-        return getLayer()->compositionType;
++        return isGoyawifi2DComposition(getLayer()->compositionType) ? HWC_OVERLAY : getLayer()->compositionType;
+     }
+     virtual uint32_t getHints() const {
+         return getLayer()->hints;
+@@ -1033,6 +1080,9 @@ public:
+     virtual void setPlaneAlpha(uint8_t alpha) {
+         if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_2)) {
+             getLayer()->planeAlpha = alpha;
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++            getLayer()->goyawifiPlaneAlpha = alpha;
++#endif
+         } else {
+             if (alpha < 0xFF) {
+                 getLayer()->flags |= HWC_SKIP_LAYER;
+@@ -1047,6 +1097,9 @@ public:
+         l->handle = 0;
+         l->transform = 0;
+         l->blending = HWC_BLENDING_NONE;
++#ifdef GOYAWIFI_HWC_LAYER_STRIDE_100
++        l->goyawifiPlaneAlpha = 0xFF;
++#endif
+         l->visibleRegionScreen.numRects = 0;
+         l->visibleRegionScreen.rects = NULL;
+         l->acquireFenceFd = -1;
+@@ -1312,7 +1365,7 @@ void HWComposer::dump(String8& result) const {
+                     if (hwcHasApiVersion(mHwc, HWC_DEVICE_API_VERSION_1_3)) {
+                         result.appendFormat(
+                                 " %9s | %08" PRIxPTR " | %04x | %04x | %02x | %04x | %-11s |%7.1f,%7.1f,%7.1f,%7.1f |%5d,%5d,%5d,%5d | %s\n",
+-                                        (isCompositionTypeBlit(l.compositionType)) ? "HWC_BLIT" : compositionTypeName[type],
++                                        isGoyawifi2DComposition(l.compositionType) ? "HWC_G2D" : (isCompositionTypeBlit(l.compositionType)) ? "HWC_BLIT" : compositionTypeName[type],
+                                         intptr_t(l.handle), l.hints, l.flags, l.transform, l.blending, formatStr.string(),
+                                         l.sourceCropf.left, l.sourceCropf.top, l.sourceCropf.right, l.sourceCropf.bottom,
+                                         l.displayFrame.left, l.displayFrame.top, l.displayFrame.right, l.displayFrame.bottom,
+@@ -1320,7 +1373,7 @@ void HWComposer::dump(String8& result) const {
+                     } else {
+                         result.appendFormat(
+                                 " %9s | %08" PRIxPTR " | %04x | %04x | %02x | %04x | %-11s |%7d,%7d,%7d,%7d |%5d,%5d,%5d,%5d | %s\n",
+-                                        (isCompositionTypeBlit(l.compositionType)) ? "HWC_BLIT" : compositionTypeName[type],
++                                        isGoyawifi2DComposition(l.compositionType) ? "HWC_G2D" : (isCompositionTypeBlit(l.compositionType)) ? "HWC_BLIT" : compositionTypeName[type],
+                                         intptr_t(l.handle), l.hints, l.flags, l.transform, l.blending, formatStr.string(),
+                                         l.sourceCrop.left, l.sourceCrop.top, l.sourceCrop.right, l.sourceCrop.bottom,
+                                         l.displayFrame.left, l.displayFrame.top, l.displayFrame.right, l.displayFrame.bottom,

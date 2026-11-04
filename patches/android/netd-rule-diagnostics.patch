@@ -1,0 +1,10 @@
+--- a/system/netd/server/RouteController.cpp
++++ b/system/netd/server/RouteController.cpp
+@@ -345,6 +345,7 @@
+     for (size_t i = 0; i < ARRAY_SIZE(AF_FAMILIES); ++i) {
+         rule.family = AF_FAMILIES[i];
+         if (int ret = sendNetlinkRequest(action, flags, iov, ARRAY_SIZE(iov))) {
++            ALOGE("GOYA_RULE action=%u family=%u priority=%u table=%u iif=%s oif=%s uid=%u-%u ret=%d", action, rule.family, priority, table, iif ? iif : "-", oif ? oif : "-", uidStart, uidEnd, ret);
+             return ret;
+         }
+     }

@@ -1,0 +1,30 @@
+diff --git a/libs/hwui/Properties.cpp b/libs/hwui/Properties.cpp
+index 6f68c2b..599da5d 100644
+--- a/libs/hwui/Properties.cpp
++++ b/libs/hwui/Properties.cpp
+@@ -143,6 +143,9 @@ bool Properties::load() {
+     skipEmptyFrames = property_get_bool(PROPERTY_SKIP_EMPTY_DAMAGE, true);
+     useBufferAge = property_get_bool(PROPERTY_USE_BUFFER_AGE, true);
+     enablePartialUpdates = property_get_bool(PROPERTY_ENABLE_PARTIAL_UPDATES, true);
++    // The original 32-character key exceeds Nougat PROP_NAME_MAX - 1.
++    // Short alias permits a device-specific legacy EGL compatibility setting.
++    enablePartialUpdates = property_get_bool("debug.hwui.partial_updates", enablePartialUpdates);
+ 
+     textGamma = property_get_float(PROPERTY_TEXT_GAMMA, DEFAULT_TEXT_GAMMA);
+ 
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index f4f0bb1..49d5da7 100644
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -989,7 +989,10 @@ public final class SystemServer {
+             mSystemServiceManager.startService(NotificationManagerService.class);
+             notification = INotificationManager.Stub.asInterface(
+                     ServiceManager.getService(Context.NOTIFICATION_SERVICE));
+-            networkPolicy.bindNotificationManager(notification);
++            // config.disable_network deliberately leaves networkPolicy absent.
++            if (networkPolicy != null) {
++                networkPolicy.bindNotificationManager(notification);
++            }
+ 
+             mSystemServiceManager.startService(DeviceStorageMonitorService.class);
+ 

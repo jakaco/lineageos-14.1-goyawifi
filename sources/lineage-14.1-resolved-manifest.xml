@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="aosp" fetch="https://android.googlesource.com/" revision="refs/tags/android-7.1.2_r36"/>
+  <remote name="github" fetch="https://github.com/"/>
+  
+  <default remote="github" revision="refs/heads/cm-14.1" sync-j="4" sync-c="true"/>
+  
+  <project name="LineageOS/android_bionic" path="bionic" revision="ed81e37ed7faf9102a1aac604e889f95110e49dd" clone-depth="1"/>
+  <project name="LineageOS/android_bootable_recovery" path="bootable/recovery" revision="d488704fd1499f5c2ec579e16e48c14f14314b4a" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_build" path="build" revision="241283b2165aec47b4d211ad80d505526d3759e0" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1">
+    <copyfile src="core/root.mk" dest="Makefile"/>
+  </project>
+  <project name="LineageOS/android_build_kati" path="build/kati" revision="bc43789a938c10cb00b81ddf08239c1b4cea48bb" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_bison" path="external/bison" revision="3661b8cdcd2c32f4776f9142745e7e850a9b4690" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_boringssl" path="external/boringssl" revision="c9d9e0bd7fa17033cfb7cd6e5855b54b861746fa" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_e2fsprogs" path="external/e2fsprogs" revision="2173635b09c10b6269dfb99f378c522c4d67761e" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_expat" path="external/expat" revision="432107a3631bf87cfb1b0a4274ef8980a4d73495" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_f2fs-tools" path="external/f2fs-tools" revision="d895e392df9d44c7e5ccabd90e5fa61eaa17da57" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_jemalloc" path="external/jemalloc" revision="836d53673c7e36381d249618ca238c52d084096a" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_libcxx" path="external/libcxx" revision="edade45a9b9a75cad03672b82426ebbea6594485" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_libpng" path="external/libpng" revision="b66a479f841d674617b130a0f9e629a8f8a23e68" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_libselinux" path="external/libselinux" revision="dd6ce4aaa509a67ea77edc57137c71c2d9c85da0" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_external_zlib" path="external/zlib" revision="a58f28c2ee8ae9f39757694f898d5e65140f9f1a" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_frameworks_native" path="frameworks/native" revision="a2efd4f088d7e9fb870b56a08b0f831e0b05321a" clone-depth="1"/>
+  <project name="LineageOS/android_hardware_libhardware" path="hardware/libhardware" revision="ef9fc792dec6a5bd4ec5f891d7b13ee6c5470949" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_hardware_libhardware_legacy" path="hardware/libhardware_legacy" revision="a79094a6111c79404332e1e98b5678a8246b3578" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9" path="prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9" revision="48ef1e67aa261116d2c244a52a30b8ba044399ff" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_system_core" path="system/core" revision="ae76011a903092b2dee058fee21f3237f244526c" clone-depth="1"/>
+  <project name="LineageOS/android_system_extras" path="system/extras" revision="f30ae7fd7508bed7974045d37b70030e24c7d4e6" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_system_security" path="system/security" revision="6d708c744455059d94b04f256ebbfd1e66a8179d" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_system_sepolicy" path="system/sepolicy" revision="83840c7f863cd30bd0df3c6db3701e39eee2a097" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="LineageOS/android_vendor_cm" path="vendor/cm" revision="3747219d52e0203805c1a9c48bcc28ad1acfa5db" upstream="refs/heads/cm-14.1" dest-branch="refs/heads/cm-14.1" clone-depth="1"/>
+  <project name="device/generic/armv7-a-neon" remote="aosp" revision="31055dc8e7110e85be92f8d5033534ce6f3b632e" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="device/generic/common" remote="aosp" revision="11c092a6cbfcf6207f07a9a8e3398e747e7f5461" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="device/generic/goldfish" remote="aosp" revision="a9603177becf2556febaca8cd6fae29f344ab286" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="device/generic/goldfish-opengl" remote="aosp" revision="3855dfbf428269d3c79dd7ba4b257ec5e9b917ff" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/build/blueprint" path="build/blueprint" remote="aosp" revision="3a89d1ce9fe7a5160ee87ee11f99edbf540020fc" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/build/soong" path="build/soong" remote="aosp" revision="ff019aa4cff6f8636102003ac14de5442ea6758f" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1">
+    <linkfile src="root.bp" dest="Android.bp"/>
+    <linkfile src="bootstrap.bash" dest="bootstrap.bash"/>
+  </project>
+  <project name="platform/external/compiler-rt" path="external/compiler-rt" remote="aosp" revision="fa6e8d21528c9d085d1565cef2cea204fe9d6a2d" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/fec" path="external/fec" remote="aosp" revision="791afbe58ff9f55145c4adf632ab8cc9ca6e5686" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/gmock" path="external/gmock" remote="aosp" revision="a78d46728dda2809b1951be54a7efdd31e09dc17" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/gtest" path="external/gtest" remote="aosp" revision="81cb746e0ba7ce98a77b175139c7425fd41021c6" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/libcap" path="external/libcap" remote="aosp" revision="5fc5a50a942e6f863189b52d2a831730b36c3331" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/libcxxabi" path="external/libcxxabi" remote="aosp" revision="fb11cb31ea214386a681d2f28b126b310ac53657" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/libunwind" path="external/libunwind" remote="aosp" revision="f7eef920b5a22f5e1635ed61c703b6400758436a" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/libunwind_llvm" path="external/libunwind_llvm" remote="aosp" revision="f171e7279d7fa8977bbe25e19019380ee493e885" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/llvm" path="external/llvm" remote="aosp" revision="f9d1195a27113f6dafba785611690175ad3914eb" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/lz4" path="external/lz4" remote="aosp" revision="74ba70e09305e588c3841e0f73f6b3a16703d8a5" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/minijail" path="external/minijail" remote="aosp" revision="3213d0fcc6103e444a5ac051314eddacfab2490b" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/pcre" path="external/pcre" remote="aosp" revision="222bbf4b3fb8e13c21686803e47e31aa3e4ad130" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/safe-iop" path="external/safe-iop" remote="aosp" revision="cd76f998688d145235de78ecd5b340d0eac9239d" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/scrypt" path="external/scrypt" remote="aosp" revision="72691396f9fa84fd39cb72d031750e580e648aa3" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/selinux" path="external/selinux" remote="aosp" revision="89ade431ecff217e0ce7752fda81b5e4e404a293" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/external/squashfs-tools" path="external/squashfs-tools" remote="aosp" revision="6697c183c48387fb577c5ded9c52fcfa071af2a7" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/libnativehelper" path="libnativehelper" remote="aosp" revision="8ebb2fb2e4b92592368c1360d49d5dfa16ef56cc" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/clang/host/linux-x86" path="prebuilts/clang/host/linux-x86" remote="aosp" revision="45562a53b2a5eb7c6e8f400413d19a12c660d7b1" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.11-4.8" remote="aosp" revision="1273431a189717842f033573eb8c777e13dd88b7" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8" path="prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8" remote="aosp" revision="73ca99196723f810dad42390d154654354f57c16" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/go/linux-x86" path="prebuilts/go/linux-x86" remote="aosp" revision="3b15975e1e4d97060c4f4fee2e14a2bc72707cc6" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/misc" path="prebuilts/misc" remote="aosp" revision="6287eb468c5772f5da2c468396bdf0068a4fa2d5" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/ndk" path="prebuilts/ndk" remote="aosp" revision="f7e665a1af37619e136cb2b998c076e5316fe937" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/ninja/linux-x86" path="prebuilts/ninja/linux-x86" remote="aosp" revision="08c87a043c925cf88a98d73a8f01a9e06fab7cb9" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+  <project name="platform/prebuilts/sdk" path="prebuilts/sdk" remote="aosp" revision="23f7de5ba433fc82269ba63c203fe0a3eaf4a680" upstream="refs/tags/android-7.1.2_r36" dest-branch="refs/tags/android-7.1.2_r36" clone-depth="1"/>
+</manifest>

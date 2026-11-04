@@ -1,0 +1,15 @@
+diff --git a/src/org/cyanogenmod/hardware/DisplayColorCalibration.java b/src/org/cyanogenmod/hardware/DisplayColorCalibration.java
+index ac0c6c6..81b9cbd 100644
+--- a/src/org/cyanogenmod/hardware/DisplayColorCalibration.java
++++ b/src/org/cyanogenmod/hardware/DisplayColorCalibration.java
+@@ -46,8 +46,8 @@ public class DisplayColorCalibration {
+     }
+ 
+     public static boolean isSupported() {
+-        // Always true, use GPU mode if no HW support
+-        return true;
++        // Opt out of the costly software-only transform on legacy HWC devices.
++        return !sUseGPUMode || !SystemProperties.getBoolean("ro.goya.no_gpu_color", false);
+     }
+ 
+     public static int getMaxValue()  {

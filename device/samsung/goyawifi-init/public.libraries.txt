@@ -1,0 +1,7 @@
+# Minimal native/ART checkpoint only; full framework product needs its standard list.
+libc.so
+libdl.so
+libm.so
+liblog.so
+libstdc++.so
+libz.so

@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/T110-pmOS/linux_kernel_pxa988",
+  "revision": "fb2f8b6cd86864c0fcac790e97a372b1772003c7",
+  "version": "Linux 3.4.5 downstream",
+  "patches": ["../patches/kernel/kernel-initrd-length.patch", "../patches/kernel/kernel-native-panel.patch", "../patches/kernel/kernel-module-no-pic.patch", "../patches/kernel/kernel-uid-routing.patch"]
+}

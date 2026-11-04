@@ -1,0 +1,30 @@
+diff --git a/linker/Android.mk b/linker/Android.mk
+index 24ae070..bb62396 100644
+--- a/linker/Android.mk
++++ b/linker/Android.mk
+@@ -54,6 +54,10 @@ ifeq ($(TARGET_IS_64_BIT),true)
+ LOCAL_CPPFLAGS += -DTARGET_IS_64_BIT
+ endif
+ 
++ifeq ($(GOYAWIFI_LEGACY_VIVANTE_TEXTRELS),true)
++LOCAL_CPPFLAGS += -DGOYAWIFI_LEGACY_VIVANTE_TEXTRELS=1
++endif
++
+ ifeq ($(TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS),true)
+ LOCAL_CPPFLAGS += -DTARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS
+ endif
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index ef31dae..c40b8ef 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -4065,6 +4065,10 @@ bool soinfo::link_image(const soinfo_list_t& global_group, const soinfo_list_t&
+ #if !defined(__i386__) // ffmpeg says that they require text relocations on x86
+ #if defined(TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS)
+     if (get_application_target_sdk_version() != __ANDROID_API__
++#ifdef GOYAWIFI_LEGACY_VIVANTE_TEXTRELS
++        // Exact-stock GPU driver: needed inside target-SDK-25 SystemUI/apps.
++        && strcmp(get_realpath(), "/system/lib/libGAL.so") != 0
++#endif
+         && get_application_target_sdk_version() > 22) {
+ #else
+     if (get_application_target_sdk_version() > 22) {

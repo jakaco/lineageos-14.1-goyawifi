@@ -1,0 +1,46 @@
+#!/sbin/sh
+# SPDX-License-Identifier: Apache-2.0
+# LineageOS 14.1 experimental SM-T110 installer. Runs as root in TWRP.
+OUTFD="$2"
+ZIPFILE="$3"
+BB=/sbin/busybox
+SYSTEM=/dev/block/mmcblk0p15
+KERNEL=/dev/block/mmcblk0p10
+SYSTEM_GZ_SHA=ccc5029f86a1121788c5047851b5a8dd1872b6f47786e77267a6213340748874
+SYSTEM_RAW_SHA=1efc679769f96535a1ef3c7bb58c94c572d845695272d116aa2faa36c6aa3ea8
+KERNEL_SHA=4e09dd3ba0a1f209d108c3518ddc7c5f4587511a377abc346dba24281a2b404b
+
+ui_print() {
+    echo "ui_print $*" >&$OUTFD
+    echo "ui_print" >&$OUTFD
+}
+abort() {
+    ui_print "ERROR: $*"
+    exit 1
+}
+if [ ! -x "$BB" ]; then abort "TWRP BusyBox missing"; fi
+MODEL="$(getprop ro.product.model)"
+DEVICE="$(getprop ro.product.device)"
+[ "$MODEL" = "SM-T110" ] || abort "Wrong model: $MODEL"
+[ "$DEVICE" = "goyawifi" ] || abort "Wrong device: $DEVICE"
+[ "$("$BB" readlink /dev/block/platform/sdhci-pxav3.2/by-name/SYSTEM)" = "$SYSTEM" ] || abort "SYSTEM partition map mismatch"
+[ "$("$BB" readlink /dev/block/platform/sdhci-pxav3.2/by-name/KERNEL)" = "$KERNEL" ] || abort "KERNEL partition map mismatch"
+[ "$(blockdev --getsize64 "$SYSTEM")" = "1594884096" ] || abort "Unexpected SYSTEM size"
+[ "$(blockdev --getsize64 "$KERNEL")" = "16777216" ] || abort "Unexpected KERNEL size"
+
+system_zip_sha=$("$BB" unzip -p "$ZIPFILE" system.ext4.gz | sha256sum | cut -d' ' -f1)
+[ "$system_zip_sha" = "$SYSTEM_GZ_SHA" ] || abort "SYSTEM payload checksum mismatch"
+kernel_zip_sha=$("$BB" unzip -p "$ZIPFILE" kernel-partition.img | sha256sum | cut -d' ' -f1)
+[ "$kernel_zip_sha" = "$KERNEL_SHA" ] || abort "KERNEL payload checksum mismatch"
+if grep -q " /system " /proc/mounts; then umount /system || abort "Could not unmount SYSTEM"; fi
+ui_print "Device and payload checks passed. Writing SYSTEM..."
+"$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -t || abort "Compressed SYSTEM image is invalid"
+"$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -dc > "$SYSTEM" || abort "SYSTEM write failed"
+sync
+[ "$("$BB" sha256sum "$SYSTEM" | cut -d' ' -f1)" = "$SYSTEM_RAW_SHA" ] || abort "SYSTEM readback checksum mismatch"
+ui_print "SYSTEM verified. Writing KERNEL..."
+"$BB" unzip -p "$ZIPFILE" kernel-partition.img | dd of="$KERNEL" bs=1048576 || abort "KERNEL write failed"
+sync
+[ "$("$BB" sha256sum "$KERNEL" | cut -d' ' -f1)" = "$KERNEL_SHA" ] || abort "KERNEL readback checksum mismatch"
+ui_print "Install complete. USER and RECOVERY were not written. Reboot System."
+exit 0

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+TARGET_ARCH := arm
+TARGET_ARCH_VARIANT := armv7-a-neon
+TARGET_CPU_VARIANT := cortex-a9
+TARGET_CPU_ABI := armeabi-v7a
+TARGET_CPU_ABI2 := armeabi
+TARGET_BOARD_PLATFORM := mrvl
+TARGET_BOOTLOADER_BOARD_NAME := PXA986
+TARGET_NO_BOOTLOADER := true
+TARGET_NO_KERNEL := true
+TARGET_PREBUILT_KERNEL := device/samsung/goyawifi-init/kernel-reference
+TARGET_USERIMAGES_USE_EXT4 := true
+BOARD_BOOTIMAGE_PARTITION_SIZE := 16777216
+BOARD_RECOVERYIMAGE_PARTITION_SIZE := 16777216
+# Native bring-up only: policy is generated and packaged separately.
+KERNEL_HAS_FINIT_MODULE := false
+GOYAWIFI_INIT_BRINGUP_NO_SELINUX := true

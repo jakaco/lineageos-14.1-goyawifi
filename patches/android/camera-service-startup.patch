@@ -1,0 +1,12 @@
+--- a/services/camera/libcameraservice/CameraService.cpp
++++ b/services/camera/libcameraservice/CameraService.cpp
+@@ -1971,6 +1971,9 @@
+ // media players.
+ 
+ MediaPlayer* CameraService::newMediaPlayer(const char *file) {
++    // The minimal Goya payload has no UI sound assets. Avoid connecting to
++    // the optional media playback path for files that do not exist.
++    if (access(file, R_OK) != 0) return NULL;
+     MediaPlayer* mp = new MediaPlayer();
+     if (mp->setDataSource(NULL /* httpService */, file, NULL) == NO_ERROR) {
+         mp->setAudioStreamType(AUDIO_STREAM_ENFORCED_AUDIBLE);

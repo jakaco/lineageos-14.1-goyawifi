@@ -1,0 +1,8 @@
+{
+  "frameworks/av": "99885127c34ad960efbb6c585c27938f384e6d75",
+  "frameworks/native": "a2efd4f088d7e9fb870b56a08b0f831e0b05321a",
+  "system/core": "ae76011a903092b2dee058fee21f3237f244526c",
+  "hardware/libhardware": "ef9fc792dec6a5bd4ec5f891d7b13ee6c5470949",
+  "external/libyuv": "f047e7ca6983218eed7703c7afd51fed7bd3b5c9",
+  "external/libjpeg-turbo": "66af1d4232ae708cc56d6aba0390856367001964"
+}

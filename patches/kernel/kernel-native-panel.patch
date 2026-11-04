@@ -1,0 +1,90 @@
+diff --git a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
+index 98837209..31e48e8d 100755
+--- a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
++++ b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
+@@ -447,6 +447,10 @@ int vx5b3d_brige_init(struct pxa168fb_info *fbi)
+ #endif	
+ 	printk("VX5B3D ..END.....\n");
+ 
++	/* The initialization table disables LVDS TX and resets PWM period.
++	 * Force the normal output-enable sequence even on first kernel init. */
++	vx5b3d->vx5b3d_enable = false;
++	pr_info("goyawifi: enabling bridge outputs after initialization\n");
+ 	goya_brightness_update();
+ 	vx5b3d->vx5b3d_enable = true;
+ 
+diff --git a/arch/arm/mm/init.c b/arch/arm/mm/init.c
+index 32280836..3aa1a7e2 100644
+--- a/arch/arm/mm/init.c
++++ b/arch/arm/mm/init.c
+@@ -39,6 +39,18 @@
+ static unsigned long phys_initrd_start __initdata = 0;
+ static unsigned long phys_initrd_size __initdata = 0;
+ 
++/* The goyawifi loader supplies a fixed 16 MiB initrd span. The packer
++ * records the actual compressed archive length in a dedicated argument.
++ * Never change its address or enlarge the loader-provided memory span.
++ */
++static unsigned long goyawifi_initrd_size __initdata;
++static int __init early_goyawifi_initrd_size(char *p)
++{
++	goyawifi_initrd_size = memparse(p, NULL);
++	return 0;
++}
++early_param("goyawifi.initrd_size", early_goyawifi_initrd_size);
++
+ static int __init early_initrd(char *p)
+ {
+ 	unsigned long start, size;
+@@ -350,6 +362,14 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
+ 	memblock_reserve(__pa(_stext), _end - _stext);
+ #endif
+ #ifdef CONFIG_BLK_DEV_INITRD
++	if (goyawifi_initrd_size && goyawifi_initrd_size < phys_initrd_size) {
++		pr_info("goyawifi: initrd span %lu -> %lu bytes\n",
++			phys_initrd_size, goyawifi_initrd_size);
++		phys_initrd_size = goyawifi_initrd_size;
++	} else if (goyawifi_initrd_size) {
++		pr_warn("goyawifi: ignoring non-shrinking initrd override %lu\n",
++			goyawifi_initrd_size);
++	}
+ 	if (phys_initrd_size &&
+ 	    !memblock_is_region_memory(phys_initrd_start, phys_initrd_size)) {
+ 		pr_err("INITRD: 0x%08lx+0x%08lx is not a memory region - disabling initrd\n",
+diff --git a/drivers/video/pxa168fb.c b/drivers/video/pxa168fb.c
+index b153c9b2..54f4edda 100644
+--- a/drivers/video/pxa168fb.c
++++ b/drivers/video/pxa168fb.c
+@@ -186,6 +186,19 @@ static unsigned int fb_size_from_cmd = 0;
+ static unsigned int disp_start_addr;
+ static unsigned int skip_power_on = 0;
+ 
++#ifdef CONFIG_MACH_GOYA
++/* Opt-in diagnostic: initialize the panel before touch probes, while retaining
++ * the bootloader-reserved framebuffer mapping and physical address. */
++static bool goyawifi_force_lcd_init;
++static int __init goyawifi_lcd_init_setup(char *value)
++{
++    goyawifi_force_lcd_init = simple_strtoul(value, NULL, 0) == 1;
++    return 0;
++}
++early_param("goyawifi.lcd_init", goyawifi_lcd_init_setup);
++#endif
++
++
+ /* Globals:
+  * fb_share mode: TV path graphics share same frame buffer with panel path
+  */
+@@ -2425,6 +2438,12 @@ static int __devinit pxa168fb_probe(struct platform_device *pdev)
+ 	} else if (mi->mmap) {
+ 		if (skip_power_on) {
+ 			fbi->skip_pw_on = 1;
++#ifdef CONFIG_MACH_GOYA
++            if (goyawifi_force_lcd_init && fbi->id == 0) {
++                fbi->skip_pw_on = 0;
++                pr_info("goyawifi: forcing native panel initialization\n");
++            }
++#endif
+ 			if (!fbi->fb_start || !fbi->fb_start_dma) {
+ 				fbi->fb_start = ioremap_wc(disp_start_addr, max_fb_size);
+ 				fbi->fb_start_dma = disp_start_addr;

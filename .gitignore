@@ -1,0 +1,9 @@
+dist/*.zip
+*.img
+*.ext4
+*.ext4.gz
+*.apk
+*.so
+*.ko
+*.bin
+*.log

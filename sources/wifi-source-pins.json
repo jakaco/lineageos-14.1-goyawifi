@@ -1,0 +1,19 @@
+{
+  "revisions": {
+    "external/wpa_supplicant_8": "9bc0bf87afd4663c3c2eec97dc43642fd2abed51",
+    "packages/inputmethods/LatinIME": "b745009a548f46d473419aabb5a0e26dca42eb7a",
+    "frameworks/opt/inputmethodcommon": "990fcb1a6dbb5d1204cc8ec86e4bc3f691f4aeeb",
+    "system/ca-certificates": "daf1e152632b0bcde555797f13faa7994a6cce62"
+  },
+  "kernel_module_fix": "Wi-Fi-only ccflags-y -fno-pic -fno-pie; tested modules built with equivalent KCFLAGS",
+  "kernel_image_changed": true,
+  "kernel_uid_routing_reference": "0b428749ce5969bc06c73855e360141b4e7126e8",
+  "kernel_reference_tree": "40bb591cb6abaf540bf9a988e3fac0ca86368865",
+  "netfilter_modules": [
+    "xt_mark",
+    "xt_connmark",
+    "xt_IDLETIMER",
+    "xt_conntrack"
+  ],
+  "qtaguid_preserved": true
+}
