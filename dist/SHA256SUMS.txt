@@ -1,2 +1,3 @@
 bbb5be4a678c9dbdc179fcfb6173e65a31a9b547a9a7999697065a8aae3a10ff  lineage-14.1-goyawifi-2026.11.04-r1-twrp.zip
 df213221a8dedcb7456454bda171aaca17dbcd789d9aa11ada725f17cb11cfdf  lineage-14.1-goyawifi-2026.11.04-r2-wifi-tablet-twrp.zip
+a7fff6352f4b800bb6042caf637d3831a34ce04eaffac9b9b834f5253f8618aa *lineage-14.1-goyawifi-2026.11.05-r3-twrp.zip

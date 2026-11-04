@@ -14,7 +14,7 @@ import re,sys
 from pathlib import Path
 p=Path(sys.argv[1]); text=p.read_text();size=Path(sys.argv[2]).stat().st_size
 opts={k:'y' for k in ['AUDIT','SECURITY','SECURITYFS','SECURITY_NETWORK','SECURITY_PATH','SECURITY_SELINUX','SECURITY_SELINUX_BOOTPARAM','SECURITY_SELINUX_DEVELOP','DEFAULT_SECURITY_SELINUX','TMPFS_XATTR','EXT4_FS_SECURITY','CMDLINE_EXTEND']}
-opts.update(SECURITY_SELINUX_BOOTPARAM_VALUE='1',SECURITY_SELINUX_CHECKREQPROT_VALUE='0',DEFAULT_SECURITY='"selinux"',DEFAULT_SECURITY_DAC='n',CMDLINE_FROM_BOOTLOADER='n',CMDLINE_FORCE='n',LOCALVERSION='"-a7init1"',CMDLINE=f'"selinux=0 androidboot.selinux=disabled enforcing=0 goyawifi.initrd_size={size}"')
+opts.update(SECURITY_SELINUX_BOOTPARAM_VALUE='1',SECURITY_SELINUX_CHECKREQPROT_VALUE='0',DEFAULT_SECURITY='"selinux"',DEFAULT_SECURITY_DAC='n',CMDLINE_FROM_BOOTLOADER='n',CMDLINE_FORCE='n',USB_ANDROID_SAMSUNG_MTP='n',LOCALVERSION='"-a7init1"',CMDLINE=f'"selinux=0 androidboot.selinux=disabled enforcing=0 goyawifi.initrd_size={size}"')
 for key,value in opts.items():
  line=f'# CONFIG_{key} is not set' if value=='n' else f'CONFIG_{key}={value}'
  pattern=rf'^(?:CONFIG_{key}=.*|# CONFIG_{key} is not set)$'

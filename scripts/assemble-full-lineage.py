@@ -46,10 +46,14 @@ if not (S/'etc/media_codecs.xml').exists():
 apps={p.name.lower() for p in S.rglob('*.apk')}
 required={'mediaprovider.apk','downloadprovider.apk','documentsui.apk','externalstorageprovider.apk','gallery2.apk','jelly.apk','webview.apk','latinime.apk','exactcalculator.apk','deskclock.apk','trebuchet.apk','settings.apk','systemui.apk','goyacamera.apk','lineagesetupwizard.apk','updater.apk','eleven.apk','recorder.apk','audiofx.apk'}
 assert not (required-apps),sorted(required-apps)
+# SystemServer only starts UsbService and AppWidgetService when these features are declared.
+for n in ('android.hardware.usb.accessory.xml','android.software.app_widgets.xml'):place(R/'src/frameworks/native/data/etc'/n,'etc/permissions/'+n)
 # Pack the known-good boot template with the full platform properties and services.
 b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'ANDROID!'
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
-z=b[page:page+k];assert hashlib.sha256(z).hexdigest()=='233e4f8e224cfa776d38c72fc82d1538353f14319c2acc5dfa04b9638576f502'
+assert hashlib.sha256(b[page:page+k]).hexdigest()=='233e4f8e224cfa776d38c72fc82d1538353f14319c2acc5dfa04b9638576f502'
+# r3 kernel: CONFIG_USB_ANDROID_SAMSUNG_MTP off, because Nougat's MtpServer needs the AOSP f_mtp ioctls and /dev/mtp_usb.
+z=(R/'kernel-out/arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='fb414d8f15f3bf31f93cc97a6a3badbeff4bb9b489eeb2e17da3f5e0e09473e5'
 arc=gzip.decompress(b[off:off+r]);q=0;entries={}
 while True:
  assert arc[q:q+6]==b'070701'
@@ -61,7 +65,7 @@ def get(n):return entries[n][3].decode()
 def settext(n,s):m,u,g,_=entries[n];entries[n]=(m,u,g,s.encode())
 def props(s):return dict(l.split('=',1) for l in s.splitlines() if '=' in l and not l.lstrip().startswith('#'))
 old=props(get('default.prop'));new=props((S/'build.prop').read_text());assert new.get('ro.cm.build.version')=='14.1',new.get('ro.cm.version')
-old.update(new);old.update({'ro.product.model':'SM-T110','ro.product.device':'goyawifi','ro.cm.device':'goyawifi','ro.adb.secure':'1','ro.secure':'1','ro.debuggable':'0','ro.build.selinux':'0','ro.goya.full_lineage':'1','ro.goya.internal_install':'1','ro.goya.legacy_egl_queue':'true','ro.goya.no_gpu_color':'true','debug.goya.fb_retire':'true','debug.goya.hwc_full':'false','ro.bt.bdaddr_path':'/data/misc/bluedroid/factory-address','config.disable_bluetooth':'false'})
+old.update(new);old.update({'ro.product.model':'SM-T110','ro.product.device':'goyawifi','ro.cm.device':'goyawifi','ro.adb.secure':'1','ro.secure':'1','ro.debuggable':'0','ro.build.selinux':'0','ro.goya.full_lineage':'1','ro.goya.internal_install':'1','ro.goya.legacy_egl_queue':'true','ro.goya.no_gpu_color':'true','debug.goya.fb_retire':'true','debug.goya.hwc_full':'false','ro.bt.bdaddr_path':'/data/misc/bluedroid/factory-address','config.disable_bluetooth':'false','persist.sys.usb.config':'mtp,adb'})
 assert all(len(v.encode())<=91 for v in old.values()),[(n,len(v)) for n,v in old.items() if len(v.encode())>91]
 settext('default.prop',''.join(f'{k}={v}\n' for k,v in old.items()))
 rc=get('init.framework.rc')
@@ -74,7 +78,25 @@ sensor_nodes='''on boot
 
 '''
 assert 'sys/class/input/input4/enable' not in rc
-rc=sensor_nodes+rc
+U='/sys/class/android_usb/android0/'
+usb_rc='''on property:goyawifi.framework.ready=1
+    setprop sys.usb.config ${persist.sys.usb.config}
+
+on property:sys.usb.config=none
+    stop adbd
+    write '''+U+'''enable 0
+    setprop sys.usb.state ${sys.usb.config}
+
+'''
+# Stock T110 IDs: 6860 for MTP and 6866 for PTP. ADB-only keeps 6860, which this tablet already enumerates with.
+for cfg,pid in (('adb','6860'),('mtp','6860'),('mtp,adb','6860'),('ptp','6866'),('ptp,adb','6866')):
+ usb_rc+=''.join(l+'\n' for l in ('on property:sys.usb.config='+cfg,'    write '+U+'enable 0','    write '+U+'idVendor 04e8','    write '+U+'idProduct '+pid,'    write '+U+'functions ${sys.usb.config}','    write '+U+'enable 1')+(('    start adbd',) if 'adb' in cfg else ())+('    setprop sys.usb.state ${sys.usb.config}','')) 
+assert 'sys.usb.config=' not in rc
+rc=sensor_nodes+usb_rc+rc
+ue=get('ueventd.rc');assert 'mtp_usb' not in ue
+settext('ueventd.rc',ue.replace('/dev/android_adb 0660','/dev/mtp_usb 0660 root mtp\n/dev/usb_accessory 0660 root usb\n/dev/android_adb 0660',1))
+ir=get('init.rc');assert 'iProduct goyawifi-Nougat-init' in ir
+settext('init.rc',ir.replace('iProduct goyawifi-Nougat-init','iProduct SM-T110',1))
 rc=rc.replace('service media /system/bin/mediaserver\n', 'service media /system/bin/mediaserver\n    setenv LD_PRELOAD /system/lib/libshim_goyawifi_binder.so\n', 1)
 for name,user,groups in [('mediaextractor','mediaex','drmrpc mediadrm'),('mediacodec','mediacodec','camera drmrpc mediadrm'),('drmserver','drm','drmrpc mediadrm')]:
  assert (S/'bin'/name).is_file(),name
@@ -82,7 +104,14 @@ for name,user,groups in [('mediaextractor','mediaex','drmrpc mediadrm'),('mediac
  rc=rc.replace('    start media\n',f'    start {name}\n    start media\n',1)
  rc+=f'\nservice {name} /system/bin/{name}\n    class main\n    user {user}\n    group {groups}\n    disabled\n'
 # These paths are created by stock post-fs-data on a normal LineageOS boot.
-setup=get('sbin/internal-setup.sh');pre='''
+setup=get('sbin/internal-setup.sh')
+# init applies persist.sys.usb.config once persistent properties are loaded.
+assert '$T setprop sys.usb.config adb\n' in setup
+setup=setup.replace('$T setprop sys.usb.config adb\n','',1)
+pre='''
+$T mkdir -p /data/misc/adb
+$T chown 1000:2000 /data/misc/adb
+$T chmod 2750 /data/misc/adb
 for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     [ ! -c /dev/ttyS2 ] || break
     /sbin/busybox sleep 1
@@ -131,7 +160,7 @@ for i,(n,(m,u,g,d)) in enumerate(list(entries.items())+[('TRAILER!!!',(0,0,0,b''
  name=n.encode()+b'\0';f=[i,m,u,g,2 if m&0o170000==0o040000 else 1,0,len(d),0,0,0,0,len(name),0]
  cpio+=b'070701'+''.join(f'{v:08x}' for v in f).encode()+name;cpio+=bytes(-len(cpio)%4);cpio+=d;cpio+=bytes(-len(cpio)%4)
 cpio+=bytes(-len(cpio)%512);rd=gzip.compress(cpio,compresslevel=9,mtime=0);assert len(rd)<=r,(len(rd),r);rd=rd.ljust(r,b'\0')
-header=bytearray(b[:page]);header[576:608]=hashlib.sha1(z+struct.pack('<I',k)+rd+struct.pack('<I',r)+struct.pack('<I',0)).digest().ljust(32,b'\0')
+header=bytearray(b[:page]);struct.pack_into('<I',header,8,len(z));header[576:608]=hashlib.sha1(z+struct.pack('<I',len(z))+rd+struct.pack('<I',r)+struct.pack('<I',0)).digest().ljust(32,b'\0')
 boot=bytes(header)+z+bytes(-len(z)%page)+rd+bytes(-len(rd)%page)
 assert len(boot)<16777216
 (O/'boot-lineage.img').write_bytes(boot);(O/'kernel-partition.img').write_bytes(boot.ljust(16777216,b'\0'));(O/'init.framework.rc').write_text(rc);(O/'internal-setup.sh').write_text(setup)
