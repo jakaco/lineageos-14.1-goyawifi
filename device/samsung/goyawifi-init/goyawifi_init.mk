@@ -7,4 +7,4 @@ PRODUCT_MANUFACTURER := samsung
 PRODUCT_MODEL := SM-T110
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_PACKAGES := init adbd
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES := ro.secure=0 ro.debuggable=1 ro.adb.secure=0
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES := ro.secure=1 ro.debuggable=0 ro.adb.secure=1

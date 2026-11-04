@@ -7,7 +7,7 @@ on boot
     write /sys/class/input/input4/poll_delay 66
 
 # RAM-only framework bring-up. Services stay disabled until files, permissions
-# and volatile data directories have been staged and checked through root ADB.
+# and volatile data directories were staged and checked during bring-up.
 on init
     export ANDROID_ROOT /system
     export ANDROID_DATA /data

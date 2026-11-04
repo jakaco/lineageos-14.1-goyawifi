@@ -14,4 +14,4 @@ Device: SM-T110 / goyawifi, PXA986, Wi-Fi-only. Owner-visible checks were perfor
 | GPS | Fix received; three satellites on balcony | Owner test; no coordinate log |
 | Accelerometer | Auto-rotation works after reboot | Owner confirmed portrait/landscape after persistent sysfs permission fix |
 
-Not validated: suspend/resume, battery endurance, long-duration stability, broad Wi-Fi throughput/roaming, and all Bluetooth profiles. SELinux remains disabled; root ADB remains enabled.
+Not validated: suspend/resume, battery endurance, long-duration stability, broad Wi-Fi throughput, and all Bluetooth profiles. This device configuration is Wi-Fi-only, with cellular voice/SMS UI disabled and ADB root disabled. SELinux remains disabled.

@@ -12,7 +12,7 @@ Before flashing, make a TWRP backup of SYSTEM, USER, and KERNEL to removable sto
 
 Confirmed on the owner's tablet: boot and UI use, Wi-Fi Internet, display colors and hardware composition, brightness and backlight-off behavior, speaker/headphone/microphone audio, Bluetooth file transfer and A2DP speaker playback, rear camera photos and video recording/playback, smooth 720p hardware video decoding, GPS fix (three satellites on a balcony), and accelerometer-driven portrait/landscape rotation after reboot.
 
-Known limits: Android 7.1.2 is end-of-life; SELinux is disabled and ADB is root-enabled; this build is not suitable for sensitive daily use. Suspend/resume, long-duration stability, battery life, and full radio throughput/roaming have not been validated. Some UI animation jank remains. This release does not provide OTA updates or encryption migration.
+This is a Wi-Fi-only tablet build: cellular voice/SMS capability and phone/carrier UI are disabled. ADB requires host authorization and `adb root` is disabled. SELinux remains disabled, so this end-of-life Android 7.1.2 build is still experimental and not suitable for sensitive daily use. Suspend/resume, long-duration stability, and battery life have not been validated. Some UI animation jank remains. This release does not provide OTA updates or encryption migration.
 
 ## Source tree
 
