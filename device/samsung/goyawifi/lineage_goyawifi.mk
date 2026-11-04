@@ -11,7 +11,7 @@ PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_AAPT_CONFIG := normal large xlarge mdpi hdpi
 PRODUCT_AAPT_PREF_CONFIG := mdpi
 PRODUCT_PACKAGES += SystemUI SettingsProvider CMSettingsProvider
-PRODUCT_PACKAGES -= Phone TeleService
+PRODUCT_PACKAGES := $(filter-out Phone TeleService,$(PRODUCT_PACKAGES))
 DEVICE_PACKAGE_OVERLAYS += device/samsung/goyawifi/overlay
 
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.secure=1 ro.debuggable=0 ro.adb.secure=1
