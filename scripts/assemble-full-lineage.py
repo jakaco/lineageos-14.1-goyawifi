@@ -8,6 +8,11 @@ assert (P/'system.img').is_file(),'Full systemimage has not finished'
 assert not S.exists(),'Use a fresh assembly directory; preserve the existing candidate'
 A.mkdir(exist_ok=True)
 shutil.copytree(P/'system',S,symlinks=True)
+# This is a Wi-Fi-only tablet. Keep Android's shared telephony framework
+# libraries, but omit the phone UI/service packages that surface SIM alerts.
+for app in ('Phone','TeleService'):
+ for parent in ('app','priv-app'):
+  shutil.rmtree(S/parent/app,ignore_errors=True)
 F=W/'framework-runtime/system';overlay={}
 def place(src,rel):
  dst=S/rel;dst.parent.mkdir(parents=True,exist_ok=True)
