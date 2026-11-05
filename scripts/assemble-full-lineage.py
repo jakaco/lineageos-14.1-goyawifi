@@ -76,6 +76,8 @@ rc=get('init.framework.rc')
 sensor_nodes='''on boot
     # AOSP init.rc sets this; without it fork fails for any process with a large private mapping.
     write /proc/sys/vm/overcommit_memory 1
+    # The kernel default pins the CPU at its top frequency.
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor interactive
     # Other AOSP init.rc values.
     write /proc/sys/kernel/randomize_va_space 2
     write /proc/sys/vm/mmap_min_addr 32768
