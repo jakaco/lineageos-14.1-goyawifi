@@ -103,6 +103,8 @@ sensor_nodes='''on boot
 assert 'sys/class/input/input4/enable' not in rc
 U='/sys/class/android_usb/android0/'
 usb_rc='''on property:goyawifi.framework.ready=1
+    # The 156 MHz floor drops the GPU mid-animation and caused most launcher jank.
+    write /sys/devices/platform/galcore/gpu/gpu0/gpufreq/scaling_min_freq 312000
     setprop sys.usb.config ${persist.sys.usb.config}
 
 on property:sys.usb.config=none
