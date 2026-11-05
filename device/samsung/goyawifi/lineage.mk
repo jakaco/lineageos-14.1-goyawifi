@@ -14,7 +14,7 @@ PRODUCT_PACKAGES += SystemUI SettingsProvider CMSettingsProvider
 PRODUCT_PACKAGES := $(filter-out Phone TeleService,$(PRODUCT_PACKAGES))
 DEVICE_PACKAGE_OVERLAYS += device/samsung/goyawifi/overlay
 
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.secure=1 ro.debuggable=0 ro.adb.secure=1
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += ro.secure=1 ro.debuggable=1 ro.adb.secure=1
 # Match the exact SM-T110 stock display geometry and device-sized heap values.
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.sf.hwrotation=270 ro.sf.lcd_density=160 ro.opengles.version=131072 \
