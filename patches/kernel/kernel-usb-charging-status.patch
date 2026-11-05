@@ -1,0 +1,28 @@
+diff --git a/arch/arm/mach-mmp/board-goya-battery.c b/arch/arm/mach-mmp/board-goya-battery.c
+index cf7918d1..67f3d144 100755
+--- a/arch/arm/mach-mmp/board-goya-battery.c
++++ b/arch/arm/mach-mmp/board-goya-battery.c
+@@ -648,8 +648,7 @@ sec_battery_platform_data_t sec_battery_pdata = {
+ 	.technology = POWER_SUPPLY_TECHNOLOGY_LION,
+ 	.bat_polarity_ta_nconnected = 1,        /* active HIGH */
+ 	.bat_irq_attr = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+-	.cable_check_type = SEC_BATTERY_CABLE_CHECK_INT |
+-			SEC_BATTERY_CABLE_CHECK_NOUSBCHARGE,
++	.cable_check_type = SEC_BATTERY_CABLE_CHECK_INT,
+ 	.cable_source_type = //SEC_BATTERY_CABLE_SOURCE_CALLBACK,
+ 		SEC_BATTERY_CABLE_SOURCE_EXTERNAL,
+ //	SEC_BATTERY_CABLE_SOURCE_EXTENDED,
+diff --git a/drivers/battery/sec_charger.c b/drivers/battery/sec_charger.c
+index 41135e04..b1ab905b 100755
+--- a/drivers/battery/sec_charger.c
++++ b/drivers/battery/sec_charger.c
+@@ -52,6 +52,9 @@ static int sec_chg_get_property(struct power_supply *psy,
+ 		break;
+ 
+ 	case POWER_SUPPLY_PROP_ONLINE:
++		val->intval = charger->cable_type;
++		break;
++
+ 	case POWER_SUPPLY_PROP_STATUS:
+ 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
+ 	case POWER_SUPPLY_PROP_HEALTH:

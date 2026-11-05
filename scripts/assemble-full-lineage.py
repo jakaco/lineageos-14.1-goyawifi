@@ -53,7 +53,7 @@ b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'AND
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
 assert hashlib.sha256(b[page:page+k]).hexdigest()=='233e4f8e224cfa776d38c72fc82d1538353f14319c2acc5dfa04b9638576f502'
 # r3 kernel: CONFIG_USB_ANDROID_SAMSUNG_MTP off, because Nougat's MtpServer needs the AOSP f_mtp ioctls and /dev/mtp_usb.
-z=(R/'kernel-out/arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='fb414d8f15f3bf31f93cc97a6a3badbeff4bb9b489eeb2e17da3f5e0e09473e5'
+z=(R/'kernel-out/arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='315313f4a0656aa5413638f5052c96ffe998d4634193590cc9f9416d31ef2f05'
 arc=gzip.decompress(b[off:off+r]);q=0;entries={}
 while True:
  assert arc[q:q+6]==b'070701'
