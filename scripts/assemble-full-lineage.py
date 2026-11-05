@@ -74,6 +74,8 @@ assert all(len(v.encode())<=91 for v in old.values()),[(n,len(v)) for n,v in old
 settext('default.prop',''.join(f'{k}={v}\n' for k,v in old.items()))
 rc=get('init.framework.rc')
 sensor_nodes='''on boot
+    # AOSP init.rc sets this; without it fork fails for any process with a large private mapping.
+    write /proc/sys/vm/overcommit_memory 1
     chown system system /sys/class/input/input4/enable
     chmod 0660 /sys/class/input/input4/enable
     chown system system /sys/class/input/input4/poll_delay
