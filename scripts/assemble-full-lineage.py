@@ -76,7 +76,9 @@ rc=get('init.framework.rc')
 sensor_nodes='''on boot
     # AOSP init.rc sets this; without it fork fails for any process with a large private mapping.
     write /proc/sys/vm/overcommit_memory 1
-    # Other AOSP init.rc values. randomize_va_space and mmap_min_addr stay at kernel defaults.
+    # Other AOSP init.rc values.
+    write /proc/sys/kernel/randomize_va_space 2
+    write /proc/sys/vm/mmap_min_addr 32768
     write /proc/sys/net/unix/max_dgram_qlen 600
     write /proc/sys/kernel/sched_tunable_scaling 0
     write /proc/sys/kernel/sched_latency_ns 10000000
