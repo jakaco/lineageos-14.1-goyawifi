@@ -76,6 +76,19 @@ rc=get('init.framework.rc')
 sensor_nodes='''on boot
     # AOSP init.rc sets this; without it fork fails for any process with a large private mapping.
     write /proc/sys/vm/overcommit_memory 1
+    # Other AOSP init.rc values. randomize_va_space and mmap_min_addr stay at kernel defaults.
+    write /proc/sys/net/unix/max_dgram_qlen 600
+    write /proc/sys/kernel/sched_tunable_scaling 0
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/sys/vm/min_free_order_shift 4
+    write /proc/sys/vm/dirty_expire_centisecs 200
+    write /proc/sys/vm/dirty_background_ratio 5
+    write /proc/sys/kernel/sysrq 0
+    write /proc/sys/kernel/kptr_restrict 2
+    write /proc/sys/net/ipv4/conf/all/accept_redirects 0
+    write /proc/sys/net/ipv6/conf/all/accept_redirects 0
+    write /proc/sys/net/ipv4/ping_group_range "0 2147483647"
     chown system system /sys/class/input/input4/enable
     chmod 0660 /sys/class/input/input4/enable
     chown system system /sys/class/input/input4/poll_delay
