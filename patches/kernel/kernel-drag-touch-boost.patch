@@ -1,0 +1,35 @@
+diff --git a/arch/arm/mach-mmp/boost.c b/arch/arm/mach-mmp/boost.c
+index 6ce82262..96b27fa1 100644
+--- a/arch/arm/mach-mmp/boost.c
++++ b/arch/arm/mach-mmp/boost.c
+@@ -22,7 +22,9 @@
+ #endif
+ 
+ /* boost cpu to max frequency 200ms by default */
+-#define CPU_BOOST_TIME		100000
++#define CPU_BOOST_TIME		300000
++/* Renew the boost at most this often while a finger is moving. */
++#define TOUCH_BOOST_RENEW_MS	100
+ static struct pm_qos_request touchboost_cpu_qos_min = {
+ 	.name = "touch_boost",
+ };
+@@ -74,8 +76,18 @@ static void keyboost_event(struct input_handle *handle, unsigned int type,
+ static void touchboost_event(struct input_handle *handle, unsigned int type,
+ 		unsigned int code, int value)
+ {
+-	if (touch_boost_enabled && code == ABS_MT_TRACKING_ID && value != 0xffffffff)
++	static unsigned long last_renew;
++
++	if (!touch_boost_enabled)
++		return;
++	if (code == ABS_MT_TRACKING_ID && value != 0xffffffff) {
++		last_renew = jiffies;
++		schedule_work(&touchboost_wk);
++	} else if ((code == ABS_MT_POSITION_X || code == ABS_MT_POSITION_Y) &&
++		   time_after(jiffies, last_renew + msecs_to_jiffies(TOUCH_BOOST_RENEW_MS))) {
++		last_renew = jiffies;
+ 		schedule_work(&touchboost_wk);
++	}
+ }
+ 
+ static int touchboost_connect(struct input_handler *handler,

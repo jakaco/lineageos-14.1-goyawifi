@@ -48,12 +48,15 @@ required={'mediaprovider.apk','downloadprovider.apk','documentsui.apk','external
 assert not (required-apps),sorted(required-apps)
 # SystemServer only starts UsbService and AppWidgetService when these features are declared.
 for n in ('android.hardware.usb.accessory.xml','android.software.app_widgets.xml'):place(R/'src/frameworks/native/data/etc'/n,'etc/permissions/'+n)
+# r4: replace the 2017-era root store with a current Mozilla one.
+shutil.rmtree(S/'etc/security/cacerts')
+for c in sorted((W/'cacerts-r4').iterdir()):place(c,'etc/security/cacerts/'+c.name)
 # Pack the known-good boot template with the full platform properties and services.
 b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'ANDROID!'
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
 assert hashlib.sha256(b[page:page+k]).hexdigest()=='233e4f8e224cfa776d38c72fc82d1538353f14319c2acc5dfa04b9638576f502'
 # r3 kernel: CONFIG_USB_ANDROID_SAMSUNG_MTP off, because Nougat's MtpServer needs the AOSP f_mtp ioctls and /dev/mtp_usb.
-z=(R/'kernel-out/arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='315313f4a0656aa5413638f5052c96ffe998d4634193590cc9f9416d31ef2f05'
+z=(R/'kernel-out/arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='7c58cfe274f86b104a621369d7296d2eaadd61c3b87ceb768e148f0e2fd34895'
 arc=gzip.decompress(b[off:off+r]);q=0;entries={}
 while True:
  assert arc[q:q+6]==b'070701'
@@ -69,7 +72,7 @@ def get(n):return entries[n][3].decode()
 def settext(n,s):m,u,g,_=entries[n];entries[n]=(m,u,g,s.encode())
 def props(s):return dict(l.split('=',1) for l in s.splitlines() if '=' in l and not l.lstrip().startswith('#'))
 old=props(get('default.prop'));new=props((S/'build.prop').read_text());assert new.get('ro.cm.build.version')=='14.1',new.get('ro.cm.version')
-old.update(new);old.update({'ro.product.model':'SM-T110','ro.product.device':'goyawifi','ro.cm.device':'goyawifi','ro.adb.secure':'1','ro.secure':'1','ro.debuggable':'1','ro.build.selinux':'0','ro.goya.full_lineage':'1','ro.goya.internal_install':'1','ro.goya.legacy_egl_queue':'true','ro.goya.no_gpu_color':'true','debug.goya.fb_retire':'true','debug.goya.hwc_full':'false','ro.bt.bdaddr_path':'/data/misc/bluedroid/factory-address','config.disable_bluetooth':'false','persist.sys.usb.config':'mtp,adb'})
+old.update(new);old.update({'ro.product.model':'SM-T110','ro.product.device':'goyawifi','ro.cm.device':'goyawifi','ro.adb.secure':'1','ro.secure':'1','ro.debuggable':'1','ro.build.selinux':'0','ro.goya.full_lineage':'1','ro.goya.internal_install':'1','ro.goya.legacy_egl_queue':'true','ro.goya.no_gpu_color':'true','debug.goya.fb_retire':'true','debug.goya.hwc_full':'false','ro.bt.bdaddr_path':'/data/misc/bluedroid/factory-address','config.disable_bluetooth':'false','persist.sys.usb.config':'mtp,adb','pm.dexopt.install':'speed','pm.dexopt.bg-dexopt':'speed'})
 assert all(len(v.encode())<=91 for v in old.values()),[(n,len(v)) for n,v in old.items() if len(v.encode())>91]
 settext('default.prop',''.join(f'{k}={v}\n' for k,v in old.items()))
 rc=get('init.framework.rc')
@@ -119,6 +122,10 @@ for cfg,pid in (('adb','6860'),('mtp','6860'),('mtp,adb','6860'),('ptp','6866'),
 assert 'sys.usb.config=' not in rc
 rc=sensor_nodes+usb_rc+rc
 ue=get('ueventd.rc');assert 'mtp_usb' not in ue
+# r4: mount microSD through vold. The encryptable flag marks it adoptable, which makes it visible to apps.
+sd_entry='/devices/platform/sdhci-pxav3.0/mmc_host* auto auto defaults voldmanaged=sdcard1:auto,encryptable=userdata\n'
+for n in ('fstab.pxa988','fstab.unknown'):
+ f=get(n);assert 'voldmanaged' not in f;settext(n,f.rstrip()+'\n'+sd_entry)
 settext('ueventd.rc',ue.replace('/dev/android_adb 0660','/dev/mtp_usb 0660 root mtp\n/dev/usb_accessory 0660 root usb\n/dev/android_adb 0660',1))
 ir=get('init.rc');assert 'iProduct goyawifi-Nougat-init' in ir
 settext('init.rc',ir.replace('iProduct goyawifi-Nougat-init','iProduct SM-T110',1))
@@ -130,6 +137,11 @@ for name,user,groups in [('mediaextractor','mediaex','drmrpc mediadrm'),('mediac
  rc+=f'\nservice {name} /system/bin/{name}\n    class main\n    user {user}\n    group {groups}\n    disabled\n'
 # These paths are created by stock post-fs-data on a normal LineageOS boot.
 setup=get('sbin/internal-setup.sh')
+# r4: run healthd's charger mode when the bootloader reports a plug-in while powered off.
+T_LINE='T=/system/bin/toybox\n';assert setup.count(T_LINE)==1
+setup=setup.replace(T_LINE,T_LINE+'if /sbin/busybox grep -q lpcharge=1 /proc/cmdline; then\n    echo OFF_MODE_CHARGING\n    exec /system/bin/healthd -c\nfi\n',1)
+for d in ('res','res/images','res/images/charger'):entries[d]=(0o40755,0,0,b'')
+for n in ('battery_scale.png','battery_fail.png'):entries['res/images/charger/'+n]=(0o100644,0,0,(W/'charger-res'/n).read_bytes())
 # init applies persist.sys.usb.config once persistent properties are loaded.
 assert '$T setprop sys.usb.config adb\n' in setup
 setup=setup.replace('$T setprop sys.usb.config adb\n','',1)
@@ -137,6 +149,10 @@ pre='''
 # libsuspend opens this as system; without it Android can never suspend.
 $T chown 1000:1000 /sys/power/wakeup_count
 $T chmod 660 /sys/power/wakeup_count
+# sdcard runs as media_rw and must be able to reach its vfat mount.
+$T mkdir -p /mnt/media_rw
+$T chown 0:1023 /mnt/media_rw
+$T chmod 0750 /mnt/media_rw
 $T mkdir -p /data/misc/adb
 $T chown 1000:2000 /data/misc/adb
 $T chmod 2750 /data/misc/adb
