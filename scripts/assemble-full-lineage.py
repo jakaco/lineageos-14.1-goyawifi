@@ -14,6 +14,9 @@ shutil.copytree(P/'system',S,symlinks=True)
 for app in ('Phone','TeleService'):
  for parent in ('app','priv-app'):
   shutil.rmtree(S/parent/app,ignore_errors=True)
+# r4: no update server exists for this port, and Email/Exchange only log errors on this tablet.
+for rel in ('priv-app/Updater','app/Email','app/Exchange2'):
+ assert (S/rel).is_dir(),rel;shutil.rmtree(S/rel)
 F=W/'framework-runtime/system';overlay={}
 def place(src,rel):
  dst=S/rel;dst.parent.mkdir(parents=True,exist_ok=True)
@@ -44,7 +47,7 @@ if not (S/'etc/media_codecs.xml').exists():
  assert len(inc)==2
  (S/'etc/media_codecs.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<MediaCodecs>\n'+''.join(f'    <Include href="{n}"/>\n' for n in sorted(inc))+'</MediaCodecs>\n')
 apps={p.name.lower() for p in S.rglob('*.apk')}
-required={'mediaprovider.apk','downloadprovider.apk','documentsui.apk','externalstorageprovider.apk','gallery2.apk','jelly.apk','webview.apk','latinime.apk','exactcalculator.apk','deskclock.apk','trebuchet.apk','settings.apk','systemui.apk','goyacamera.apk','lineagesetupwizard.apk','updater.apk','eleven.apk','recorder.apk','audiofx.apk'}
+required={'mediaprovider.apk','downloadprovider.apk','documentsui.apk','externalstorageprovider.apk','gallery2.apk','jelly.apk','webview.apk','latinime.apk','exactcalculator.apk','deskclock.apk','trebuchet.apk','settings.apk','systemui.apk','goyacamera.apk','lineagesetupwizard.apk','eleven.apk','recorder.apk','audiofx.apk'}
 assert not (required-apps),sorted(required-apps)
 # SystemServer only starts UsbService and AppWidgetService when these features are declared.
 for n in ('android.hardware.usb.accessory.xml','android.software.app_widgets.xml'):place(R/'src/frameworks/native/data/etc'/n,'etc/permissions/'+n)
@@ -60,6 +63,8 @@ with zipfile.ZipFile(wv) as z:
  for i in z.infolist():
   if i.filename.startswith('lib/armeabi-v7a/') and i.filename.endswith('.so'):
    rel='app/webview/lib/arm/'+i.filename.rsplit('/',1)[1];(S/rel).parent.mkdir(parents=True,exist_ok=True);(S/rel).write_bytes(z.read(i));os.chmod(S/rel,0o644);overlay[rel]=hashlib.sha256((S/rel).read_bytes()).hexdigest()
+# r4: Bluetooth setup that retries a bad saved address and falls back to a stable generated one.
+place(Path(__file__).resolve().parents[1]/'device/samsung/goyawifi/prebuilt/goya-bluetooth-setup.sh','etc/goya-bluetooth-setup.sh')
 # Pack the known-good boot template with the full platform properties and services.
 b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'ANDROID!'
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
