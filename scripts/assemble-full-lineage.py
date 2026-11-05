@@ -109,6 +109,9 @@ setup=get('sbin/internal-setup.sh')
 assert '$T setprop sys.usb.config adb\n' in setup
 setup=setup.replace('$T setprop sys.usb.config adb\n','',1)
 pre='''
+# libsuspend opens this as system; without it Android can never suspend.
+$T chown 1000:1000 /sys/power/wakeup_count
+$T chmod 660 /sys/power/wakeup_count
 $T mkdir -p /data/misc/adb
 $T chown 1000:2000 /data/misc/adb
 $T chmod 2750 /data/misc/adb
