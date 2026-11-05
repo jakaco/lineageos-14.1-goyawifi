@@ -14,7 +14,7 @@ Device: SM-T110 / goyawifi, PXA986, Wi-Fi-only. Owner-visible checks were perfor
 | GPS | Accurate fix with many satellites; date corrected after a 1024-week rollover; fix time reads 18 s ahead | Owner test on r3; HAL log; no coordinate log |
 | USB | MTP transfers match SHA-256 both ways on Windows; PTP and charging modes switch with ADB connected | Owner mode switches and hash checks on an r3 test build |
 | Charging | USB and wall charger detected and reported as charging; charge rate not measured | Owner test and kernel log on an r3 test build |
-| Suspend | Entered and resumed cleanly over 643 s unplugged on an earlier r3 build; not retested on the final image | Kernel log and owner wake check |
+| Suspend | r4: about 984 s of continuous suspend in a 17-minute unplugged test; Wi-Fi and Bluetooth back after wake; wake takes about 3 s | Timestamp logger, kernel log and owner wake check |
 | Performance | Launcher scroll jank about 6% with a 312 MHz GPU floor, from 63% | Scripted scroll benchmark |
 | microSD | 32 GB SDHC card mounts as public storage; apps and MTP can use it; 8 MB write verified (about 2.6 MB/s) | r4 test builds |
 | Off-mode charging | Plugging in while powered off shows the charging screen; holding Power boots Android | Owner test on an r4 test build |
@@ -22,4 +22,4 @@ Device: SM-T110 / goyawifi, PXA986, Wi-Fi-only. Owner-visible checks were perfor
 | Drag performance | Touch boost renews during drags; slow drags clearly smoother | Owner comparison |
 | Accelerometer | Auto-rotation works after reboot | Owner confirmed portrait/landscape after persistent sysfs permission fix |
 
-Not validated: suspend/resume on the final r3 image, overnight sleep, battery endurance, long-duration stability, broad Wi-Fi throughput, and all Bluetooth profiles. This device configuration is Wi-Fi-only, with cellular voice/SMS UI disabled. The image sets `ro.debuggable=1`; ADB needs host authorization, and `adb root` stays refused unless enabled in Developer options. SELinux remains disabled.
+Not validated: overnight sleep, battery endurance, long-duration stability, broad Wi-Fi throughput, and all Bluetooth profiles. This device configuration is Wi-Fi-only, with cellular voice/SMS UI disabled. The image sets `ro.debuggable=1`; ADB needs host authorization, and `adb root` stays refused unless enabled in Developer options. SELinux remains disabled.
