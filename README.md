@@ -6,13 +6,13 @@
 
 The TWRP installer is attached to the GitHub Release. It writes SYSTEM (`mmcblk0p15`) and KERNEL (`mmcblk0p10`). It does not format USER/data (`mmcblk0p16`) or write RECOVERY (`mmcblk0p9`). Its updater checks the exact model, device, partition map, partition sizes, recovery fingerprint, and payload hashes.
 
-Before flashing, make a TWRP backup of SYSTEM, USER, and KERNEL to removable storage or a PC. In TWRP, choose **Install**, select the release ZIP, confirm, then reboot System. If any check fails, the updater stops before writing.
+Before flashing, make a TWRP backup of SYSTEM, USER, and KERNEL to removable storage or a PC. In TWRP, choose **Install**, select the release ZIP, confirm, then reboot System. The install takes about 10 minutes and the screen may go dark; do not interrupt it, and do not read the SYSTEM partition over ADB while it runs. If any check fails, the updater stops before writing.
 
 ## Hardware status
 
 Confirmed on the owner's tablet: boot and UI use, Wi-Fi Internet, display colors and hardware composition, brightness and backlight-off behavior, speaker/headphone/microphone audio, Bluetooth file transfer and A2DP speaker playback, rear camera photos and video recording/playback, smooth 720p hardware video decoding, GPS fix (three satellites on a balcony), and accelerometer-driven portrait/landscape rotation after reboot.
 
-This is a Wi-Fi-only tablet build: cellular voice/SMS capability and phone/carrier UI are disabled. ADB requires host authorization and `adb root` is disabled. SELinux remains disabled, so this end-of-life Android 7.1.2 build is still experimental and not suitable for sensitive daily use. Suspend/resume, long-duration stability, and battery life have not been validated. Some UI animation jank remains. This release does not provide OTA updates or encryption migration.
+This is a Wi-Fi-only tablet build: cellular voice/SMS capability and phone/carrier UI are disabled. ADB requires host authorization, and `adb root` stays refused unless root access is enabled in Developer options. The image sets `ro.debuggable=1` because `ro.debuggable=0` caused framework restarts about 90 seconds after boot on this kernel. SELinux remains disabled, so this end-of-life Android 7.1.2 build is still experimental and not suitable for sensitive daily use. Suspend/resume, long-duration stability, and battery life have not been validated. Some UI animation jank remains. This release does not provide OTA updates or encryption migration.
 
 ## Source tree
 

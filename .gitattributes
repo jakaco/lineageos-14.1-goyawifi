@@ -1,0 +1,4 @@
+# Installer scripts run on the tablet and must keep LF endings.
+packaging/twrp/META-INF/** text eol=lf
+packaging/twrp/SHA256SUMS text eol=lf
+*.sh text eol=lf

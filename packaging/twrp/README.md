@@ -4,4 +4,4 @@ This package targets **Samsung SM-T110 / goyawifi only**. The updater checks the
 
 Before installation, make a TWRP backup of SYSTEM, USER, and KERNEL to removable storage or a PC. Use TWRP 3.x, copy the release ZIP to the tablet, choose Install, and reboot System after success. The package is experimental and unsigned; install only if you understand the risk and can restore your backup.
 
-The included system image contains Android 7.1.2 / LineageOS 14.1, device-specific hardware support, and stock-derived components. Cellular voice/SMS capability and phone/carrier UI are disabled for this Wi-Fi-only tablet. ADB authentication is enabled and `adb root` is disabled. SELinux is disabled in this experimental build.
+The included system image contains Android 7.1.2 / LineageOS 14.1, device-specific hardware support, and stock-derived components. Cellular voice/SMS capability and phone/carrier UI are disabled for this Wi-Fi-only tablet. ADB authentication is enabled. The image sets `ro.debuggable=1`, and `adb root` stays refused unless root access is enabled in Developer options. SELinux is disabled in this experimental build.

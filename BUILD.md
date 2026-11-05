@@ -5,7 +5,7 @@
 3. Apply the relevant patches from `patches/android/` and `patches/kernel/` to their matching pinned projects. Keep the source patch base and revision aligned.
 4. Place the device files from `device/samsung/goyawifi/` at `device/samsung/goyawifi/` in the Android tree. The tested runtime overlays were generated from source-built components and the exact SM-T110 stock firmware; those vendor files are intentionally absent here.
 5. Follow the staged build scripts in `scripts/`. They document the native kernel, Android core, graphics, services, ART, camera, and system assembly steps. The original scripts expect the isolated Ubuntu/J: build environment used for this release and may need host-path edits.
-6. Build the full product as a `user` variant, not `userdebug`, to keep production ADB authentication enabled. The product config disables cellular voice/SMS UI and root ADB for this Wi-Fi-only tablet.
+6. Build the full product as a `user` variant, not `userdebug`, to keep production ADB authentication enabled. Assembly then sets `ro.debuggable=1`, because `ro.debuggable=0` causes framework restarts on this kernel. The product config disables cellular voice/SMS UI and root ADB for this Wi-Fi-only tablet.
 7. Build the TWRP ZIP with `scripts/build-twrp-zip.py --system-gz PATH --kernel PATH --output PATH`. Update `packaging/twrp/release-metadata.json` with the newly generated SYSTEM and KERNEL hashes before packaging; the script refuses payloads that do not match the metadata.
 
 The source sync and proprietary runtime extraction are separate: building from source alone does not recreate Samsung's closed-source hardware HALs.
