@@ -51,6 +51,15 @@ for n in ('android.hardware.usb.accessory.xml','android.software.app_widgets.xml
 # r4: replace the 2017-era root store with a current Mozilla one.
 shutil.rmtree(S/'etc/security/cacerts')
 for c in sorted((W/'cacerts-r4').iterdir()):place(c,'etc/security/cacerts/'+c.name)
+# r4: Bromite 81 SystemWebView replaces the 2016 Chromium 52 build. It keeps the
+# com.android.webview package name, and system apps need their native libraries unpacked.
+import zipfile
+wv=W/'webview-bromite-81/arm_SystemWebView.apk';assert hashlib.sha256(wv.read_bytes()).hexdigest()=='306e7c95ed348e13deb3e247eca4fc9595a29b77452ee54996ab7d7dda25805f'
+place(wv,'app/webview/webview.apk')
+with zipfile.ZipFile(wv) as z:
+ for i in z.infolist():
+  if i.filename.startswith('lib/armeabi-v7a/') and i.filename.endswith('.so'):
+   rel='app/webview/lib/arm/'+i.filename.rsplit('/',1)[1];(S/rel).parent.mkdir(parents=True,exist_ok=True);(S/rel).write_bytes(z.read(i));os.chmod(S/rel,0o644);overlay[rel]=hashlib.sha256((S/rel).read_bytes()).hexdigest()
 # Pack the known-good boot template with the full platform properties and services.
 b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'ANDROID!'
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
@@ -153,6 +162,10 @@ $T chmod 660 /sys/power/wakeup_count
 $T mkdir -p /mnt/media_rw
 $T chown 0:1023 /mnt/media_rw
 $T chmod 0750 /mnt/media_rw
+# WebView shares its native library's RELRO section from here; without it every app maps a private copy.
+$T mkdir -p /data/misc/shared_relro
+$T chown 1037:1037 /data/misc/shared_relro
+$T chmod 771 /data/misc/shared_relro
 $T mkdir -p /data/misc/adb
 $T chown 1000:2000 /data/misc/adb
 $T chmod 2750 /data/misc/adb
