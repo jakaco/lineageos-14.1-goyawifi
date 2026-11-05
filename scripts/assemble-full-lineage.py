@@ -61,6 +61,10 @@ while True:
  d=arc[q:q+f[6]];q=(q+f[6]+3)&~3
  if n=='TRAILER!!!':break
  entries[n]=(f[1],f[2],f[3],d)
+# r3 init: same source and product as the template's, plus shell access to sys.powerctl so adb reboot works on user builds.
+ini=(R/'src/out/target/product/goyawifi-init/root/init').read_bytes();assert hashlib.sha256(ini).hexdigest()=='bb880ec843e4aa4e5f19fb00357ac58e657f55dbc3b51d68ff6e928bd3bad9c6'
+assert hashlib.sha256(entries['init'][3]).hexdigest()=='ad0633c9e77e23483ce6db96b4b28eb132dff5d9cd82d17cba1ea20d8887248d'
+entries['init']=entries['init'][:3]+(ini,)
 def get(n):return entries[n][3].decode()
 def settext(n,s):m,u,g,_=entries[n];entries[n]=(m,u,g,s.encode())
 def props(s):return dict(l.split('=',1) for l in s.splitlines() if '=' in l and not l.lstrip().startswith('#'))

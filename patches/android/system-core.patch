@@ -42,15 +42,17 @@ index 7a37059..b1c145f 100755
          char* args[] = { path, const_cast<char*>("--second-stage"), nullptr };
          if (execv(path, args) == -1) {
 diff --git a/init/property_service.cpp b/init/property_service.cpp
-index fc14796..63ae482 100644
+index fc14796..cee7c4a 100644
 --- a/init/property_service.cpp
 +++ b/init/property_service.cpp
-@@ -74,6 +74,9 @@ void property_init() {
+@@ -74,6 +74,11 @@ void property_init() {
  
  static int check_mac_perms(const char *name, char *sctx, struct ucred *cr)
  {
 +#ifdef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
-+    return cr && (cr->uid == 0 || cr->uid == AID_SYSTEM);
++    // adbd runs as shell on user builds, and adb reboot needs this one property.
++    return cr && (cr->uid == 0 || cr->uid == AID_SYSTEM ||
++                  (cr->uid == AID_SHELL && !strcmp(name, "sys.powerctl")));
 +#endif
      char *tctx = NULL;
      int result = 0;
