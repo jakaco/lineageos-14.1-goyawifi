@@ -1,3 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-/dev/block/mmcblk0p15 /system ext4 ro,noatime wait
-/dev/block/mmcblk0p16 /data ext4 nosuid,nodev,noatime,user_xattr wait
+# <src>                                    <mnt>    <type> <options>                               <fs_mgr flags>
+/dev/block/mmcblk0p15                        /system  ext4   ro,noatime                              wait
+/dev/block/mmcblk0p16                        /data    ext4   nosuid,nodev,noatime,user_xattr         wait
+/devices/platform/sdhci-pxav3.0/mmc_host*    auto     auto   defaults                                voldmanaged=sdcard1:auto,encryptable=userdata

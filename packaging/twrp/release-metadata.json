@@ -1,20 +1,17 @@
 {
-  "version": "LineageOS 14.1 for Samsung SM-T110 (goyawifi) Wi-Fi-only r4",
-  "release_date": "2026-11-05",
-  "channel": "experimental",
+  "name": "LineageOS 14.1 for Galaxy Tab 3 Lite 7.0 (SM-T110)",
+  "release": "r5",
+  "date": "2026-11-06",
+  "device": "goyawifi",
   "android": "7.1.2",
-  "build_variant": "user",
-  "ro_debuggable": true,
-  "cellular_ui": false,
-  "adb_authentication": true,
-  "adb_root": false,
-  "system_ext4_sha256": "198de8eb57216e1c5c26d7a7c6695124e311fecea103f890fa78901d85588ed4",
-  "system_ext4_gzip_sha256": "de2708e7fafb843cedd3d58a39bac6c40d2a1bc164a4089f725c0972e39aeff8",
-  "kernel_partition_sha256": "5b8706cc05dbfb3fa3070edc9072d7d7d30f8ae11e58d12f94e397966e64ce8d",
-  "kernel_code_sha256": "7c58cfe274f86b104a621369d7296d2eaadd61c3b87ceb768e148f0e2fd34895",
-  "system_partition": "mmcblk0p15",
-  "kernel_partition": "mmcblk0p10",
-  "recovery_partition": "mmcblk0p9",
-  "userdata_partition": "mmcblk0p16",
-  "webview": "Bromite SystemWebView 81.0.4044.76"
+  "kernel": "3.4.113",
+  "webview": "Bromite SystemWebView 81.0.4044.76",
+  "system_ext4_sha256": "ebab15bbe4f9d5f27486e000d1968a1d60dfc25b2d02a8bf5e8e002e8e8cf455",
+  "system_ext4_gzip_sha256": "341b7bfb5f72162416031c4732ceb88f8de72c415b49f789bd1e97692c7efdfb",
+  "kernel_partition_sha256": "058eb6781513d10c62cb16974bec59151b942b5d0efe4f16a7c540174e63e55e",
+  "zimage_sha256": "e424febf19fb05b5cd1dec6f1522a0cb7f479ad56e7a11edac02b743a299deea",
+  "partitions": {
+    "system": "mmcblk0p15",
+    "kernel": "mmcblk0p10"
+  }
 }

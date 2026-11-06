@@ -1,7 +1,7 @@
-# TWRP package contents
+# LineageOS 14.1 for Galaxy Tab 3 Lite 7.0 (SM-T110)
 
-This package targets **Samsung SM-T110 / goyawifi only**. The updater checks the model, device, partition map, partition sizes, recovery fingerprint, and image checksums before writing. It writes SYSTEM (`mmcblk0p15`) and KERNEL (`mmcblk0p10`) only. USER/data and RECOVERY are not flashed or formatted.
+For the SM-T110 (goyawifi) only. Install from TWRP 3.x.
 
-Before installation, make a TWRP backup of SYSTEM, USER, and KERNEL to removable storage or a PC. Use TWRP 3.x, copy the release ZIP to the tablet, choose Install, and reboot System after success. The package is experimental and unsigned; install only if you understand the risk and can restore your backup.
+The installer checks the model and the partition layout, writes SYSTEM and KERNEL, and verifies both. It doesn't touch Recovery or the data partition. Back up System, Data and Boot first.
 
-The included system image contains Android 7.1.2 / LineageOS 14.1, device-specific hardware support, and stock-derived components. Cellular voice/SMS capability and phone/carrier UI are disabled for this Wi-Fi-only tablet. ADB authentication is enabled. The image sets `ro.debuggable=1`, and `adb root` stays refused unless root access is enabled in Developer options. SELinux is disabled in this experimental build.
+Source and release notes: https://github.com/jakaco/lineageos-14.1-goyawifi

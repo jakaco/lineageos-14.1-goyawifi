@@ -1,14 +1,16 @@
 #!/sbin/sh
 # SPDX-License-Identifier: Apache-2.0
-# LineageOS 14.1 experimental SM-T110 installer. Runs as root in TWRP.
+# LineageOS 14.1 installer for the SM-T110 (goyawifi). Runs as root in TWRP.
+# Writes SYSTEM and KERNEL only and verifies both after writing.
 OUTFD="$2"
 ZIPFILE="$3"
 BB=/sbin/busybox
 SYSTEM=/dev/block/mmcblk0p15
 KERNEL=/dev/block/mmcblk0p10
-SYSTEM_GZ_SHA=de2708e7fafb843cedd3d58a39bac6c40d2a1bc164a4089f725c0972e39aeff8
-SYSTEM_RAW_SHA=198de8eb57216e1c5c26d7a7c6695124e311fecea103f890fa78901d85588ed4
-KERNEL_SHA=5b8706cc05dbfb3fa3070edc9072d7d7d30f8ae11e58d12f94e397966e64ce8d
+RELEASE=r5
+SYSTEM_GZ_SHA=341b7bfb5f72162416031c4732ceb88f8de72c415b49f789bd1e97692c7efdfb
+SYSTEM_RAW_SHA=ebab15bbe4f9d5f27486e000d1968a1d60dfc25b2d02a8bf5e8e002e8e8cf455
+KERNEL_SHA=058eb6781513d10c62cb16974bec59151b942b5d0efe4f16a7c540174e63e55e
 
 ui_print() {
     echo "ui_print $*" >&$OUTFD
@@ -18,6 +20,7 @@ abort() {
     ui_print "ERROR: $*"
     exit 1
 }
+ui_print "LineageOS 14.1 for Galaxy Tab 3 Lite 7.0 (SM-T110), $RELEASE"
 if [ ! -x "$BB" ]; then abort "TWRP BusyBox missing"; fi
 MODEL="$(getprop ro.product.model)"
 DEVICE="$(getprop ro.product.device)"

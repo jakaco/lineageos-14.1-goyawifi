@@ -1,0 +1,93 @@
+diff --git a/init/Android.mk b/init/Android.mk
+index 0f5fe1c..c1e7b95 100644
+--- a/init/Android.mk
++++ b/init/Android.mk
+@@ -12,6 +12,10 @@ endif
+ 
+ init_options += -DLOG_UEVENTS=0
+ 
++ifeq ($(GOYAWIFI_INIT_BRINGUP_NO_SELINUX),true)
++init_options += -DGOYAWIFI_INIT_BRINGUP_NO_SELINUX=1
++endif
++
+ ifneq ($(TARGET_INIT_COLDBOOT_TIMEOUT),)
+ init_options += -DCOLDBOOT_TIMEOUT_OVERRIDE=$(TARGET_INIT_COLDBOOT_TIMEOUT)
+ endif
+diff --git a/init/init.cpp b/init/init.cpp
+index 7a37059..b1c145f 100755
+--- a/init/init.cpp
++++ b/init/init.cpp
+@@ -501,6 +501,10 @@ static void security_failure() {
+ }
+ 
+ static void selinux_initialize(bool in_kernel_domain) {
++#ifdef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
++    NOTICE("GOYAWIFI: temporary native bring-up, skipping SELinux policy setup\n");
++    return;
++#endif
+     Timer t;
+ 
+     selinux_callback cb;
+@@ -617,10 +621,12 @@ int main(int argc, char** argv) {
+     // If we're in the kernel domain, re-exec init to transition to the init domain now
+     // that the SELinux policy has been loaded.
+     if (is_first_stage) {
++#ifndef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
+         if (restorecon("/init") == -1) {
+             ERROR("restorecon failed: %s\n", strerror(errno));
+             security_failure();
+         }
++#endif
+         char* path = argv[0];
+         char* args[] = { path, const_cast<char*>("--second-stage"), nullptr };
+         if (execv(path, args) == -1) {
+diff --git a/init/property_service.cpp b/init/property_service.cpp
+index fc14796..cee7c4a 100644
+--- a/init/property_service.cpp
++++ b/init/property_service.cpp
+@@ -74,6 +74,11 @@ void property_init() {
+ 
+ static int check_mac_perms(const char *name, char *sctx, struct ucred *cr)
+ {
++#ifdef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
++    // adbd runs as shell on user builds, and adb reboot needs this one property.
++    return cr && (cr->uid == 0 || cr->uid == AID_SYSTEM ||
++                  (cr->uid == AID_SHELL && !strcmp(name, "sys.powerctl")));
++#endif
+     char *tctx = NULL;
+     int result = 0;
+     property_audit_data audit_data;
+diff --git a/init/service.cpp b/init/service.cpp
+index a5334f4..4958997 100644
+--- a/init/service.cpp
++++ b/init/service.cpp
+@@ -344,6 +344,7 @@ bool Service::Start() {
+     }
+ 
+     std::string scon;
++#ifndef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
+     if (!seclabel_.empty()) {
+         scon = seclabel_;
+     } else {
+@@ -387,6 +388,8 @@ bool Service::Start() {
+         }
+     }
+ 
++#endif
++
+     NOTICE("Starting service '%s'...\n", name_.c_str());
+ 
+     pid_t pid = fork();
+@@ -401,8 +404,12 @@ bool Service::Start() {
+             int socket_type = ((si.type == "stream" ? SOCK_STREAM :
+                                 (si.type == "dgram" ? SOCK_DGRAM :
+                                  SOCK_SEQPACKET)));
++#ifdef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
++            const char* socketcon = nullptr;
++#else
+             const char* socketcon =
+                 !si.socketcon.empty() ? si.socketcon.c_str() : scon.c_str();
++#endif
+ 
+             int s = create_socket(si.name.c_str(), socket_type, si.perm,
+                                   si.uid, si.gid, socketcon);

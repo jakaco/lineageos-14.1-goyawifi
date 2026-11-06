@@ -1,0 +1,4 @@
+# Exact SM-T110 stock mapping; Nougat policy handles wake keys.
+key 115 VOLUME_UP
+key 114 VOLUME_DOWN
+key 102 HOME

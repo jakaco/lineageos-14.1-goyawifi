@@ -1,0 +1,232 @@
+From 1a6faf99fdee6348205b557e59758b042f8840ca Mon Sep 17 00:00:00 2001
+From: android7 <android7@goyawifi-builder>
+Date: Fri, 6 Nov 2026 01:44:40 +0100
+Subject: [PATCH] goyawifi: fix panel power sequencing and slow resume
+
+- Light the LVDS bridge and backlight only after DSI video is running,
+  so the panel is never lit without a picture (white flash at boot and
+  reboot).
+- Leave bridge outputs off on resume while brightness is 0 and enable
+  them when Android lights the screen; keep the LCD 3.3V rail following
+  bridge power.
+- Return the I2C1 pins to the controller on bridge power-on. Power-off
+  parks them as GPIOs and nothing restored them, so bridge and touch
+  transfers timed out: 2.3 s added to every resume, and touch IRQ retries
+  that could stall suspend.
+- PM core: log any device callback that takes 20 ms or more.
+---
+ .../mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c   | 71 ++++++++++++++++---
+ drivers/base/power/main.c                     | 17 ++---
+ drivers/video/pxa168fb.c                      | 10 +++
+ 3 files changed, 81 insertions(+), 17 deletions(-)
+
+diff --git a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
+index 31e48e8d..3d4bfdb4 100755
+--- a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
++++ b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
+@@ -34,13 +34,25 @@ struct pxa168fb_info *fbi_global = NULL;
+ struct Quicklogic_bridge_info *g_vx5b3d = NULL;
+ 
+ 
++/* goyawifi: LCD 3.3V rail state. Touch I2C stops working while this rail is
++ * off, so it follows the bridge power and not the screen state. */
++static bool goya_lcd_rail_on;
++
++static void goya_lcd_rail(struct pxa168fb_info *fbi, bool on)
++{
++	if (goya_lcd_rail_on == on)
++		return;
++	lcd_power(fbi, on);
++	goya_lcd_rail_on = on;
++}
++
+ void vx5b3d_backlightReg_on(int reg_on)
+ {
+ 	struct Quicklogic_bridge_info *pvx5b3d = g_vx5b3d;
+ 
+ #if defined(CONFIG_QUICKLOGIC_BRIDGE)
+ 	if (reg_on == true) {
+-		lcd_power(fbi_global, 1);
++		goya_lcd_rail(fbi_global, true);
+ 		mutex_lock(&pvx5b3d->pwr_lock);
+ 
+ 		/*6.3Khz period for pwm */
+@@ -194,6 +206,8 @@ void goya_brightness_update(void)
+ 	goya_update_brightness(vx5b3d);
+ }
+ 
++void goya_panel_output_ready(void);
++
+ static int goya_set_brightness(struct backlight_device *bd)
+ {
+ 	struct Quicklogic_bridge_info *vx5b3d = g_vx5b3d;
+@@ -203,8 +217,12 @@ static int goya_set_brightness(struct backlight_device *bd)
+ 
+ 	printk("backlight control =[%d] \n",bd->props.brightness);
+ 
+-	if (fbi_global->active)
+-		goya_update_brightness(vx5b3d);
++	if (fbi_global->active) {
++		if (!vx5b3d->vx5b3d_enable && bd->props.brightness > 0)
++			goya_panel_output_ready();
++		else
++			goya_update_brightness(vx5b3d);
++	}
+ 
+ 	return ret;
+ }
+@@ -259,6 +277,18 @@ int vx5b3d_power(struct pxa168fb_info *fbi, int on)
+ 		regulator_enable(lvds_1v2);
+ 		regulator_enable(lvds_1v8);
+ 
++#if defined(CONFIG_QUICKLOGIC_BRIDGE)
++		/* goyawifi: power-off parks the I2C1 pins as GPIOs; give them back
++		 * to the controller, or bridge and touch transfers time out until
++		 * the touch driver happens to power-cycle (stalls resume/suspend). */
++#if defined(CONFIG_SPA) || defined(CONFIG_SPA_LPM_MODE)
++		if (!spa_lpm_charging_mode_get())
++#else
++		if (!lpcharge)
++#endif
++			i2c1_pin_changed(0);
++#endif
++
+ 		if (fbi->skip_pw_on) {
+ 			printk("vx5b3d_power skip pw on \n");
+ 			gpio_free(VX5B3D_PWR_EN_VXE_3P3);
+@@ -275,11 +305,15 @@ int vx5b3d_power(struct pxa168fb_info *fbi, int on)
+ 		udelay(20);
+ 
+ 	} else {
++		bool outputs_on = vx5b3d->vx5b3d_enable;
++
+ 		vx5b3d->prevee_strenght = 0;
+ 		vx5b3d->vx5b3d_enable = false;
+ 
+-		vx5b3d_backlightReg_on(false);
+-		lcd_power(fbi, 0);		
++		/* Skip if a resume left the outputs off (screen never lit). */
++		if (outputs_on)
++			vx5b3d_backlightReg_on(false);
++		goya_lcd_rail(fbi, false);		
+ #if defined(CONFIG_QUICKLOGIC_BRIDGE)
+ #if defined(CONFIG_SPA) || defined(CONFIG_SPA_LPM_MODE)
+ 		if(!spa_lpm_charging_mode_get())
+@@ -448,15 +482,33 @@ int vx5b3d_brige_init(struct pxa168fb_info *fbi)
+ 	printk("VX5B3D ..END.....\n");
+ 
+ 	/* The initialization table disables LVDS TX and resets PWM period.
+-	 * Force the normal output-enable sequence even on first kernel init. */
++	 * Leave the outputs off here: pxa168fb calls goya_panel_output_ready()
++	 * once DSI video is running, so the panel is never lit without a
++	 * picture (seen as a white flash at boot and reboot). */
+ 	vx5b3d->vx5b3d_enable = false;
+-	pr_info("goyawifi: enabling bridge outputs after initialization\n");
+-	goya_brightness_update();
+-	vx5b3d->vx5b3d_enable = true;
+ 
+ 	return 0;
+ }
+ 
++void goya_panel_output_ready(void)
++{
++	struct Quicklogic_bridge_info *vx5b3d = g_vx5b3d;
++
++	if (!vx5b3d || vx5b3d->vx5b3d_enable)
++		return;
++	/* On system resume the screen is still off (brightness 0) and I2C
++	 * interrupts are masked, so every bridge write would wait for its
++	 * timeout. Leave the outputs off; goya_set_brightness() turns them on
++	 * when Android lights the screen. */
++	if (!vx5b3d->bd || vx5b3d->bd->props.brightness == 0) {
++		goya_lcd_rail(fbi_global, true);
++		return;
++	}
++	pr_info("goyawifi: enabling bridge outputs after DSI start\n");
++	goya_brightness_update();
++	vx5b3d->vx5b3d_enable = true;
++}
++
+ #if defined(CONFIG_QUICKLOGIC_BRIDGE)
+ static ssize_t vx5b3dxreg_write_store(struct device *dev, struct
+ device_attribute *attr, const char *buf, size_t size)
+@@ -674,6 +726,7 @@ static ssize_t lvds_clk_switch_store(struct device *dev,
+ 	
+ 	/*do dsi_init,then lvds_init is called to re-gerenate lvds pclk*/	
+ 	dsi_init(fbi_global);
++	goya_panel_output_ready();
+ 	
+ 	Vee_cabc->orig_lvds_clk = Vee_cabc->lvds_clk;
+ 	Vee_cabc->lvds_clk_switching = false;
+diff --git a/drivers/base/power/main.c b/drivers/base/power/main.c
+index 37c019f9..9e463214 100644
+--- a/drivers/base/power/main.c
++++ b/drivers/base/power/main.c
+@@ -171,14 +171,12 @@ void device_pm_move_last(struct device *dev)
+ 
+ static ktime_t initcall_debug_start(struct device *dev)
+ {
+-	ktime_t calltime = ktime_set(0, 0);
++	ktime_t calltime = ktime_get();
+ 
+-	if (initcall_debug) {
++	if (initcall_debug)
+ 		pr_info("calling  %s+ @ %i, parent: %s\n",
+ 			dev_name(dev), task_pid_nr(current),
+ 			dev->parent ? dev_name(dev->parent) : "none");
+-		calltime = ktime_get();
+-	}
+ 
+ 	return calltime;
+ }
+@@ -188,12 +186,15 @@ static void initcall_debug_report(struct device *dev, ktime_t calltime,
+ {
+ 	ktime_t delta, rettime;
+ 
+-	if (initcall_debug) {
+-		rettime = ktime_get();
+-		delta = ktime_sub(rettime, calltime);
++	rettime = ktime_get();
++	delta = ktime_sub(rettime, calltime);
++	if (initcall_debug)
+ 		pr_info("call %s+ returned %d after %Ld usecs\n", dev_name(dev),
+ 			error, (unsigned long long)ktime_to_ns(delta) >> 10);
+-	}
++	/* goyawifi: name any device that makes suspend or resume slow. */
++	else if (ktime_to_ms(delta) >= 20)
++		pr_info("PM: %s %s took %lld ms\n", dev_driver_string(dev),
++			dev_name(dev), (long long)ktime_to_ms(delta));
+ }
+ 
+ /**
+diff --git a/drivers/video/pxa168fb.c b/drivers/video/pxa168fb.c
+index 54f4edda..051ba8ec 100644
+--- a/drivers/video/pxa168fb.c
++++ b/drivers/video/pxa168fb.c
+@@ -1690,6 +1690,10 @@ void pxa988_reserve_fb_mem(void)
+ 				(unsigned)disp_start_addr, (unsigned)fb_size_align);
+ }
+ 
++#ifdef CONFIG_MACH_GOYA
++extern void goya_panel_output_ready(void);
++#endif
++
+ static int init_once;
+ static int pxa168fb_disable(struct pxa168fb_info *fbi)
+ {
+@@ -1836,6 +1840,12 @@ static int pxa168fb_enable(struct pxa168fb_info *fbi)
+ 	x = readl(fbi->reg_base + intf_ctrl(fbi->id));
+ 	writel(x | CFG_DUMB_ENA_MASK, fbi->reg_base + intf_ctrl(fbi->id));
+ 
++#ifdef CONFIG_MACH_GOYA
++	/* Panel data is flowing now; light the LVDS bridge and backlight. */
++	if (fbi->id == 0)
++		goya_panel_output_ready();
++#endif
++
+ 	pr_info("pxa168fb.%d enable -\n", fbi->id);
+ 	return 0;
+ }
+-- 
+2.43.0
+

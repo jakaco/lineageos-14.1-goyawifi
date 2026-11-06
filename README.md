@@ -1,25 +1,85 @@
-# LineageOS 14.1 port for Samsung SM-T110 (goyawifi)
+# LineageOS 14.1 for Galaxy Tab 3 Lite 7.0 (SM-T110)
 
-**Status: experimental, hardware-tested on one SM-T110.** This is a downstream Android 7.1.2 / LineageOS 14.1 port, not an official LineageOS release. The only tested target is the Wi-Fi-only Samsung SM-T110 (`goyawifi`, PXA986). Do not flash on SM-T111, SM-T113, SM-T116, or another device.
+Unofficial LineageOS 14.1 (Android 7.1.2) for the Samsung Galaxy Tab 3 Lite 7.0 Wi-Fi, **SM-T110** (`goyawifi`, Marvell PXA986).
+
+| | |
+|---|---|
+| Android | 7.1.2, security patch 2021-06-05 |
+| Kernel | Linux 3.4.113 (Samsung/Marvell 3.4.5 tree updated to the last 3.4 stable) |
+| GPU | Vivante GC1000 with the stock Android 4.2 blobs |
+| Status | Experimental, tested on one tablet |
+
+**SM-T110 only.** Don't flash this on the SM-T111, T113, T116 or any other model. The installer checks the model and partition layout and stops if they don't match.
 
 ## Download
 
-The TWRP installer is attached to the GitHub Release. It writes SYSTEM (`mmcblk0p15`) and KERNEL (`mmcblk0p10`). It does not format USER/data (`mmcblk0p16`) or write RECOVERY (`mmcblk0p9`). Its updater checks the exact model, device, partition map, partition sizes, recovery fingerprint, and payload hashes.
+Get the latest zip from [Releases](https://github.com/jakaco/lineageos-14.1-goyawifi/releases). Each release lists its SHA-256.
 
-Before flashing, make a TWRP backup of SYSTEM, USER, and KERNEL to removable storage or a PC. In TWRP, choose **Install**, select the release ZIP, confirm, then reboot System. The install takes about 10 minutes and the screen may go dark; do not interrupt it, and do not read the SYSTEM partition over ADB while it runs. If any check fails, the updater stops before writing.
+## Working
 
-## Hardware status
+- Display, hardware composition, brightness
+- Touchscreen
+- Wi-Fi
+- Bluetooth (file transfer, A2DP audio)
+- Audio: speaker, headphones, headset mic
+- Rear camera: photos and video
+- Hardware video decoding (720p)
+- GPS (standalone)
+- Accelerometer and auto-rotation
+- microSD as portable storage
+- MTP and PTP
+- Charging, including the charging screen when off
+- Deep sleep
 
-Confirmed on the owner's tablet: boot and UI use, Wi-Fi Internet, display colors and hardware composition, brightness and backlight-off behavior, speaker/headphone/microphone audio, Bluetooth file transfer and A2DP speaker playback, rear camera photos and video recording/playback, smooth 720p hardware video decoding, GPS fix (three satellites on a balcony), and accelerometer-driven portrait/landscape rotation after reboot.
+## Known issues
 
-This is a Wi-Fi-only tablet build: cellular voice/SMS capability and phone/carrier UI are disabled. ADB requires host authorization, and `adb root` stays refused unless root access is enabled in Developer options. The image sets `ro.debuggable=1` because `ro.debuggable=0` caused framework restarts about 90 seconds after boot on this kernel. SELinux remains disabled, so this end-of-life Android 7.1.2 build is still experimental and not suitable for sensitive daily use. Suspend/resume on the final image, long-duration stability, and battery life have not been validated. Some UI animation jank remains. This release does not provide OTA updates or encryption migration.
+- The launcher logs an "app not responding" shortly after each boot.
+- The boot animation crashes as it closes. This is harmless.
+- USB goes back to its default mode after each boot, so choose File transfer each time.
+- microSD writes are slow, about 2.6 MB/s.
+- Wi-Fi uses the US region, so channels 12 and 13 aren't available.
+- GPS has no SUPL or XTRA assistance, and fix times read 18 seconds ahead.
+- Per-app battery statistics are incomplete.
+- SELinux is disabled and `ro.debuggable=1` is set (ADB still needs approval on the tablet). The vendor kernel and blobs predate SELinux enforcing, and `ro.debuggable=0` makes the framework restart.
+- Don't use "Format as internal" for SD cards. Adoptable storage needs encryption that hasn't been tested.
 
-## Source tree
+Not tested yet: overnight battery drain and long-term stability.
 
-This repository carries the device configuration, source patches, pinned upstream manifest, and build/package scripts. It does not mirror the full Android source tree or commit stock vendor binaries. The flashable release image includes device-specific runtime components; see `LICENSES.md` for provenance and license boundaries. A clean source sync uses the revisions in `sources/lineage-14.1-resolved-manifest.xml` and `sources/kernel-source.json`.
+## Installation
 
-Build host used for the validated image: isolated Ubuntu 16.04, OpenJDK 8, downstream Linux 3.4.5 toolchain, and an ext4 build volume with about 64 GiB of source/build space. Scripts in `scripts/` show the recorded build and assembly steps; the original host paths must be supplied for another build. Proprietary components must be supplied from a lawful SM-T110 firmware source.
+You need TWRP 3.x on the tablet.
 
-## Release checksums
+1. In TWRP, back up System, Data and Boot (kernel) to a microSD card or a PC.
+2. Coming from stock or another ROM: **Wipe > Advanced Wipe > Data**. Updating from an earlier release of this ROM: no wipe needed.
+3. **Install** the zip. It takes up to 10 minutes and the screen may go dark; don't interrupt it.
+4. Reboot to System. The first boot takes a few minutes.
 
-See `packaging/twrp/release-metadata.json` for raw image hashes. The GitHub Release asset includes `release-metadata.json` and a `SHA256SUMS` file for payload verification.
+The installer writes SYSTEM and KERNEL only. It never touches Recovery or your data partition, and it checks every image after writing.
+
+Google apps aren't included and haven't been tested.
+
+## Source
+
+| Path | Contents |
+|---|---|
+| `device/samsung/goyawifi` | Device tree: audio, camera, Bluetooth, GPS, lights and video HALs, configs, overlays, `proprietary-files.txt` |
+| `device/samsung/goyawifi-init` | Small bootstrap product that builds `init`, `adbd` and the binder shim |
+| `kernel/` | Kernel source pin, `.config` and patches |
+| `patches/` | Patches to LineageOS projects |
+| `manifests/` | Pinned LineageOS manifest and extra source pins |
+| `scripts/` | Build, image assembly and zip packaging |
+| `packaging/twrp` | Installer |
+
+See [BUILDING.md](BUILDING.md) to build it and [CHANGELOG.md](CHANGELOG.md) for release notes.
+
+## Credits
+
+- [LineageOS](https://lineageos.org)
+- [T110-pmOS](https://github.com/T110-pmOS/linux_kernel_pxa988) for the kernel tree
+- Samsung and Marvell for the kernel source and stock blobs
+- [Bromite](https://github.com/bromite/bromite) for the System WebView
+- kernel.org stable maintainers for 3.4.6 to 3.4.113
+
+## License
+
+Device tree, scripts and packaging: Apache-2.0. Patches keep the license of the project they apply to; the kernel is GPL-2.0. Stock blobs in the release zip belong to Samsung/Marvell. See [LICENSES.md](LICENSES.md).

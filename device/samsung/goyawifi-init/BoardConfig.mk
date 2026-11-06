@@ -12,6 +12,6 @@ TARGET_PREBUILT_KERNEL := device/samsung/goyawifi-init/kernel-reference
 TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_BOOTIMAGE_PARTITION_SIZE := 16777216
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 16777216
-# Native bring-up only: policy is generated and packaged separately.
+# SELinux is disabled on this port.
 KERNEL_HAS_FINIT_MODULE := false
 GOYAWIFI_INIT_BRINGUP_NO_SELINUX := true

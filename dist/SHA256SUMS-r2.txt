@@ -1,1 +1,0 @@
-df213221a8dedcb7456454bda171aaca17dbcd789d9aa11ada725f17cb11cfdf  lineage-14.1-goyawifi-2026.11.04-r2-wifi-tablet-twrp.zip

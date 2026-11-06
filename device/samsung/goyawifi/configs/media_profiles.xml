@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MediaSettings>
+    <CamcorderProfiles cameraId="0">
+        <EncoderProfile quality="low" fileFormat="mp4" duration="60">
+            <Video codec="h264" bitRate="1200000" width="640" height="480" frameRate="24"/>
+            <Audio codec="aac" bitRate="64000" sampleRate="44100" channels="1"/>
+        </EncoderProfile>
+        <EncoderProfile quality="high" fileFormat="mp4" duration="60">
+            <Video codec="h264" bitRate="1200000" width="640" height="480" frameRate="24"/>
+            <Audio codec="aac" bitRate="64000" sampleRate="44100" channels="1"/>
+        </EncoderProfile>
+        <EncoderProfile quality="480p" fileFormat="mp4" duration="60">
+            <Video codec="h264" bitRate="1200000" width="640" height="480" frameRate="24"/>
+            <Audio codec="aac" bitRate="64000" sampleRate="44100" channels="1"/>
+        </EncoderProfile>
+        <ImageEncoding quality="90"/>
+        <ImageEncoding quality="80"/>
+        <ImageEncoding quality="70"/>
+        <ImageDecoding memCap="20000000"/>
+    </CamcorderProfiles>
+    <EncoderOutputFileFormat name="mp4"/>
+    <VideoEncoderCap name="h264" enabled="true" minBitRate="64000" maxBitRate="2000000" minFrameWidth="320" maxFrameWidth="640" minFrameHeight="240" maxFrameHeight="480" minFrameRate="7" maxFrameRate="24"/>
+    <AudioEncoderCap name="aac" enabled="true" minBitRate="16000" maxBitRate="128000" minSampleRate="8000" maxSampleRate="48000" minChannels="1" maxChannels="2"/>
+</MediaSettings>

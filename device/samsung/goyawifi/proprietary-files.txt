@@ -1,0 +1,58 @@
+# Stock blobs from SM-T110 firmware T110XXUANI7 (Android 4.2.2), /system
+# Shipped unmodified. Pull them with ./extract-files.sh
+
+# Firmware
+etc/firmware/mrvl/SDIO8777_SDIO_SDIO.bin
+etc/firmware/mrvl/WlanCalData_ext.conf
+etc/firmware/mrvl/bt_cal_data.conf
+etc/firmware/mrvl/bt_init_cfg.conf
+etc/firmware/mrvl/cal_data.conf
+etc/firmware/mrvl/reg_alpha2
+etc/firmware/mrvl/sd8777_uapsta.bin
+
+# Graphics
+lib/egl/libEGL_MRVL.so
+lib/egl/libGLESv1_CM_MRVL.so
+lib/egl/libGLESv2_MRVL.so
+lib/hw/gralloc.mrvl.so
+lib/hw/hwcomposer.mrvl.so
+lib/libGAL.so
+lib/libGLESv2SC.so
+lib/libHWComposerGC.so
+lib/libgcu.so
+lib/libgputex.so
+
+# Media
+lib/libMrvlOmx.so
+lib/libcoda7542.so
+lib/libcoda7542hal.so
+lib/libcodecaacdec.so
+lib/libcodecaacenc.so
+lib/libcodecamrnbdec.so
+lib/libcodecamrnbenc.so
+lib/libcodecamrwbdec.so
+lib/libcodecamrwbenc.so
+lib/libcodeccoda7542dec.so
+lib/libcodeccoda7542enc.so
+lib/libcodecddpdec.so
+lib/libcodech263dec.so
+lib/libcodech263enc.so
+lib/libcodecmp3dec.so
+lib/libcodecwmadec.so
+lib/libionhelper.so
+lib/libmiscgen.so
+
+# GPS
+etc/mrvl_agps_default.conf
+etc/mrvl_gps_platform.conf
+lib/hw/gps.default.so:lib/hw/gps.vendor.so
+lib/libagps_hal.so
+
+# Sensors
+etc/sensor/sensord_cfg_axis
+lib/hw/sensors.mrvl.so:lib/hw/sensors.default.so
+
+# Misc
+etc/rom.bin
+lib/libmtelif.so
+lib/libsocketsvr.so
