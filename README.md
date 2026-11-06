@@ -43,7 +43,7 @@ Get the latest zip from [Releases](https://github.com/jakaco/lineageos-14.1-goya
 - SELinux is disabled and `ro.debuggable=1` is set (ADB still needs approval on the tablet). The vendor kernel and blobs predate SELinux enforcing, and `ro.debuggable=0` makes the framework restart.
 - Don't use "Format as internal" for SD cards. Adoptable storage needs encryption that hasn't been tested.
 
-Not tested yet: overnight battery drain and long-term stability.
+Standby: 85% to 83% over 11 hours asleep with Wi-Fi on (about 0.2% per hour). Long-term stability hasn't been tested yet.
 
 ## Installation
 
