@@ -10,8 +10,9 @@ assert (P/'system.img').is_file(),'Full systemimage has not finished'
 assert not S.exists(),'Use a fresh assembly directory; preserve the existing candidate'
 A.mkdir(exist_ok=True)
 shutil.copytree(P/'system',S,symlinks=True)
-# r5 framework-res: config_animateScreenLights=true (plain fade at screen off).
-assert hashlib.sha256((S/'framework/framework-res.apk').read_bytes()).hexdigest().startswith('a7e595b6bc72c5a3')
+# framework-res: config_animateScreenLights=true (r5, plain fade at screen off) and the
+# SM-T110 power profile (r6, Settings > Battery usage).
+assert hashlib.sha256((S/'framework/framework-res.apk').read_bytes()).hexdigest().startswith('d10bcaacbcb2c237')
 # This is a Wi-Fi-only tablet. Keep Android's shared telephony framework
 # libraries, but omit the phone UI/service packages that surface SIM alerts.
 for app in ('Phone','TeleService'):
@@ -32,6 +33,9 @@ for rel in ('lib/libshim_goyawifi_binder.so','usr/keylayout/gpio-keys.kl','usr/i
  if (F/rel).is_file():place(F/rel,rel)
 place(W/'framework-runtime/tmp/galcore.ko','lib/modules/galcore.ko')
 place(W/'framework-runtime/sbin/healthd','bin/healthd')
+# r6: core feature list (tablet_core_hardware without compass/managed users). Without it
+# there is no backup service and the Play Store hides apps that need a touchscreen.
+place(Path(__file__).resolve().parents[1]/'device/samsung/goyawifi/configs/permissions/goyawifi-core-hardware.xml','etc/permissions/goyawifi-core-hardware.xml')
 # Keep only hardware-specific changes to the full platform libraries and apps.
 for kind in ('wifi','audio','bluetooth','camera','hw-video','brightness','gps','sensors'):
  srcroot=W/(kind+'-runtime')/'system'
@@ -73,7 +77,7 @@ b=(W/'full-lineage-rollback/boot-internal.img').read_bytes();assert b[:8]==b'AND
 k,ka,r,ra,ss,sa,tags,page=struct.unpack_from('<8I',b,8);off=page+((k+page-1)//page)*page
 assert hashlib.sha256(b[page:page+k]).hexdigest()=='233e4f8e224cfa776d38c72fc82d1538353f14319c2acc5dfa04b9638576f502'
 # r5 kernel: Linux 3.4.113 tree from kernel/source.json (r3 MTP config kept), built into kernel-out-r5.
-KO=R/'kernel-out-r5';z=(KO/'arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='e424febf19fb05b5cd1dec6f1522a0cb7f479ad56e7a11edac02b743a299deea'
+KO=R/'kernel-out-r5';z=(KO/'arch/arm/boot/zImage').read_bytes();assert hashlib.sha256(z).hexdigest()=='b46ee8ee9dc6e752917c47f2c75b902d810e67cb0cfff3490247ba1c8e834cba'
 # Modules must match the r5 kernel's vermagic.
 for m in ('drivers/marvell/graphics/galcore_src/galcore.ko','drivers/marvell/sd8787/wlan_src/mlan.ko','drivers/marvell/sd8787/wlan_src/sd8xxx.ko','drivers/marvell/sd8787/mbtc_src/mbt8xxx.ko','net/netfilter/xt_mark.ko','net/netfilter/xt_connmark.ko','net/netfilter/xt_IDLETIMER.ko','net/netfilter/xt_conntrack.ko'):
  assert (S/'lib/modules'/Path(m).name).is_file(),m;place(KO/m,'lib/modules/'+Path(m).name)
@@ -84,8 +88,9 @@ while True:
  d=arc[q:q+f[6]];q=(q+f[6]+3)&~3
  if n=='TRAILER!!!':break
  entries[n]=(f[1],f[2],f[3],d)
-# r3 init: same source and product as the template's, plus shell access to sys.powerctl so adb reboot works on user builds.
-ini=(R/'src/out/target/product/goyawifi-init/root/init').read_bytes();assert hashlib.sha256(ini).hexdigest()=='bb880ec843e4aa4e5f19fb00357ac58e657f55dbc3b51d68ff6e928bd3bad9c6'
+# init: same source and product as the template's, plus shell access to sys.powerctl so adb reboot works on user builds
+# (r3), and services with an SELinux label start with SELinux disabled (r6, needed for Magisk).
+ini=(R/'src/out/target/product/goyawifi-init/root/init').read_bytes();assert hashlib.sha256(ini).hexdigest()=='015ad0db7c48e1583cc03ebe35ad7c70d3ec178436a237526f9d41d2092b670d'
 assert hashlib.sha256(entries['init'][3]).hexdigest()=='ad0633c9e77e23483ce6db96b4b28eb132dff5d9cd82d17cba1ea20d8887248d'
 entries['init']=entries['init'][:3]+(ini,)
 def get(n):return entries[n][3].decode()
@@ -146,7 +151,8 @@ ue=get('ueventd.rc');assert 'mtp_usb' not in ue
 sd_entry='/devices/platform/sdhci-pxav3.0/mmc_host* auto auto defaults voldmanaged=sdcard1:auto,encryptable=userdata\n'
 for n in ('fstab.pxa988','fstab.unknown'):
  f=get(n);assert 'voldmanaged' not in f;settext(n,f.rstrip()+'\n'+sd_entry)
-settext('ueventd.rc',ue.replace('/dev/android_adb 0660','/dev/mtp_usb 0660 root mtp\n/dev/usb_accessory 0660 root usb\n/dev/android_adb 0660',1))
+# r6: /dev/fuse 0666 as in AOSP ueventd.rc; MTP's document provider mounts appfuse through it.
+settext('ueventd.rc',ue.replace('/dev/android_adb 0660','/dev/mtp_usb 0660 root mtp\n/dev/usb_accessory 0660 root usb\n/dev/fuse 0666 root root\n/dev/android_adb 0660',1))
 ir=get('init.rc');assert 'iProduct goyawifi-Nougat-init' in ir
 settext('init.rc',ir.replace('iProduct goyawifi-Nougat-init','iProduct SM-T110',1))
 rc=rc.replace('service media /system/bin/mediaserver\n', 'service media /system/bin/mediaserver\n    setenv LD_PRELOAD /system/lib/libshim_goyawifi_binder.so\n', 1)
@@ -163,6 +169,21 @@ setup=setup.replace('/system/bin/goyawifi_pid_probe 1\n','',1)
 # r4: run healthd's charger mode when the bootloader reports a plug-in while powered off.
 T_LINE='T=/system/bin/toybox\n';assert setup.count(T_LINE)==1
 setup=setup.replace(T_LINE,T_LINE+'if /sbin/busybox grep -q lpcharge=1 /proc/cmdline; then\n    echo OFF_MODE_CHARGING\n    exec /system/bin/healthd -c\nfi\n',1)
+# r6: 256 MB of compressed swap in RAM (the kernel is built without Samsung's hooks that kept
+# reclaim from ever swapping), and the deadline I/O scheduler so UI reads don't queue behind
+# background apps. Without swap, memory pressure at boot evicted app code over and over.
+# r6: MTP's document provider mounts appfuse here; without it, opening the microSD card in
+# Settings > Storage crashed. Created after the /mnt tmpfs is mounted, as AOSP init.rc does.
+MNT_LINE='$T mount -t tmpfs -o mode=0755,uid=0,gid=1000 tmpfs /storage\n';assert setup.count(MNT_LINE)==1
+setup=setup.replace(MNT_LINE,MNT_LINE+'$T mkdir -p /mnt/appfuse\n$T chmod 0711 /mnt/appfuse\n',1)
+WIFI_LINE='if /system/bin/sh /system/etc/goya-wifi-setup.sh; then\n';assert setup.count(WIFI_LINE)==1
+setup=setup.replace(WIFI_LINE,'''echo deadline > /sys/block/mmcblk0/queue/scheduler
+if [ -b /dev/block/zram0 ]; then
+    echo 268435456 > /sys/block/zram0/disksize
+    /system/bin/mkswap /dev/block/zram0 >/dev/null && /system/bin/swapon /dev/block/zram0
+    echo 100 > /proc/sys/vm/swappiness
+fi
+'''+WIFI_LINE,1)
 for d in ('res','res/images','res/images/charger'):entries[d]=(0o40755,0,0,b'')
 for n in ('battery_scale.png','battery_fail.png'):entries['res/images/charger/'+n]=(0o100644,0,0,(W/'charger-res'/n).read_bytes())
 # init applies persist.sys.usb.config once persistent properties are loaded.
@@ -226,7 +247,37 @@ old_hdr=("# RAM-only framework bring-up. Services stay disabled until files, per
          +"# and volatile data directories have been staged and checked through root ADB."+NL+"on init"+NL)
 assert rc.count(old_hdr)==1
 rc=rc.replace(old_hdr,"# Core services start once internal-setup.sh has prepared storage and devices."+NL+"on init"+NL
-    +"    # RLIMIT_NICE 40, as in AOSP init.rc, so apps can raise thread priority."+NL+"    setrlimit 13 40 40"+NL,1)
+    +"    # RLIMIT_NICE 40, as in AOSP init.rc, so apps can raise thread priority."+NL+"    setrlimit 13 40 40"+NL
+    # r6: the Marvell gralloc HAL needs the binder shim. Services get it through LD_PRELOAD;
+    # this makes the linker add it for any process that loads gralloc (adb shell screencap crashed).
+    +"    export LD_SHIM_LIBS /system/lib/hw/gralloc.mrvl.so|libshim_goyawifi_binder.so"+NL
+    # r6: debugfs, as vendor init scripts mount it, and the AOSP /d link. Battery stats read
+    # kernel wakelocks from /d/wakeup_sources, and tracing writes to its trace_marker.
+    +"    mount debugfs debugfs /sys/kernel/debug"+NL
+    +"    chmod 0755 /sys/kernel/debug"+NL
+    +"    symlink /sys/kernel/debug /d"+NL
+    # r6: per-app process groups, as in AOSP init.rc, so Android can kill an app together
+    # with every process it started. The kernel has cgroups for cpuacct only: Android 7.1
+    # no longer uses the cpu cgroup, and cpusets lose CPUs on hotplug in this kernel.
+    +"    mkdir /acct"+NL
+    +"    mount cgroup none /acct cpuacct"+NL
+    +"    mkdir /acct/uid"+NL,1)
+# LineageOS root (addonsu): this init does not read /system/etc/init, so the su
+# daemon from superuser.rc lives here. It runs only when /system/xbin/su exists and
+# Root access is set to Apps or Apps and ADB in Developer options.
+su_rc=NL.join(['','service su_daemon /system/xbin/su --daemon','    user root','    group root','    disabled','',
+    'on property:persist.sys.root_access=0','    stop su_daemon','',
+    'on property:persist.sys.root_access=2','    stop su_daemon','',
+    'on property:persist.sys.root_access=1','    start su_daemon','',
+    'on property:persist.sys.root_access=3','    start su_daemon',''])
+assert 'su_daemon' not in rc
+rc=rc+su_rc
+# r6: fire the standard boot triggers at the matching points of this boot sequence, so
+# rc hooks that rely on them (Magisk's post-fs-data and late-start steps) run.
+a=NL.join(['on property:goyawifi.runtime.ready=1','    load_persist_props',''])
+assert rc.count(a)==1;rc=rc.replace(a,NL.join(['on property:goyawifi.runtime.ready=1','    trigger post-fs-data','    load_persist_props','']),1)
+a=NL.join(['on property:goyawifi.framework.ready=1','    start bootanim',''])
+assert rc.count(a)==1;rc=rc.replace(a,NL.join(['on property:goyawifi.framework.ready=1','    trigger nonencrypted','    start bootanim','']),1)
 settext('sbin/internal-setup.sh',setup);settext('init.framework.rc',rc)
 # r5: the bring-up first-boot script marked setup complete, set a 10-minute screen timeout and
 # forced the launcher, which skipped or broke the setup wizard on a new install. Keep only the
@@ -237,16 +288,32 @@ for line in ('/system/bin/settings put global device_provisioned 1','/system/bin
              '/system/bin/am start -a android.intent.action.MAIN -c android.intent.category.HOME'):
  assert fb.count(line+NL)==1,line;fb=fb.replace(line+NL,'',1)
 assert 'settings put' not in fb and 'cmd package compile -m speed' in fb
+# r6: disable Settings screens that need a modem; they crash on this Wi-Fi-only tablet.
+extra=NL.join([
+ 'for c in RadioInfo BandMode CarrierSelection DateTimeSettingsSetupWizard Settings\\$ApnSettingsActivity \\',
+ '         Settings\\$ApnEditorActivity Settings\\$IccLockSettingsActivity Settings\\$ImeiInformationActivity sim.SimDialogActivity; do',
+ '    /system/bin/pm disable "com.android.settings/.$c" >/dev/null 2>&1',
+ 'done',''])
+mark='/system/bin/toybox touch /data/system/goya-internal-provisioned'
+assert fb.count(mark)==1
+fb=fb.replace(mark,extra+mark,1)
 settext('sbin/internal-firstboot.sh',fb)
 for cp in ('BOOTCLASSPATH','SYSTEMSERVERCLASSPATH'):
  for j in re.search(r'^    export '+cp+r' (.*)$',rc,re.M)[1].split(':'):assert (S/j.removeprefix('/system/')).is_file(),j
-for p in re.findall(r'^service \S+ (/system/\S+)',rc,re.M):assert (S/p.removeprefix('/system/')).is_file(),p
+for p in re.findall(r'^service \S+ (/system/\S+)',rc,re.M):assert p=='/system/xbin/su' or (S/p.removeprefix('/system/')).is_file(),p
+# r6: ship the built SELinux policy as /sepolicy. SELinux stays disabled (init never loads
+# it), but Magisk's magiskinit patches /sepolicy at boot and crashes if it is missing.
+sp=(P/'root/sepolicy').read_bytes();assert hashlib.sha256(sp).hexdigest()=='efaa3d76dbb2835a6195eac2ddca15ad82100e7ce355ee55ca440ce1c9efe152'
+assert 'sepolicy' not in entries
+entries['sepolicy']=(0o100644,0,0,sp)
 cpio=bytearray()
 for i,(n,(m,u,g,d)) in enumerate(list(entries.items())+[('TRAILER!!!',(0,0,0,b''))],1):
  name=n.encode()+b'\0';f=[i,m,u,g,2 if m&0o170000==0o040000 else 1,0,len(d),0,0,0,0,len(name),0]
  cpio+=b'070701'+''.join(f'{v:08x}' for v in f).encode()+name;cpio+=bytes(-len(cpio)%4);cpio+=d;cpio+=bytes(-len(cpio)%4)
-cpio+=bytes(-len(cpio)%512);rd=gzip.compress(cpio,compresslevel=9,mtime=0);assert len(rd)<=r,(len(rd),r);rd=rd.ljust(r,b'\0')
-header=bytearray(b[:page]);struct.pack_into('<I',header,8,len(z));header[576:608]=hashlib.sha1(z+struct.pack('<I',len(z))+rd+struct.pack('<I',r)+struct.pack('<I',0)).digest().ljust(32,b'\0')
+# r6 kernel boots any ramdisk size, so the header carries the real size (standard boot
+# image; Magisk and other tools can unpack it). r5 and older padded it to a fixed span.
+cpio+=bytes(-len(cpio)%512);rd=gzip.compress(cpio,compresslevel=9,mtime=0);r=len(rd)
+header=bytearray(b[:page]);struct.pack_into('<I',header,8,len(z));struct.pack_into('<I',header,16,r);header[48:64]=b'goyawifi'.ljust(16,bytes(1));header[576:608]=hashlib.sha1(z+struct.pack('<I',len(z))+rd+struct.pack('<I',r)+struct.pack('<I',0)).digest().ljust(32,b'\0')
 boot=bytes(header)+z+bytes(-len(z)%page)+rd+bytes(-len(rd)%page)
 assert len(boot)<16777216
 (O/'boot-lineage.img').write_bytes(boot);(O/'kernel-partition.img').write_bytes(boot.ljust(16777216,b'\0'));(O/'init.framework.rc').write_text(rc);(O/'internal-setup.sh').write_text(setup)

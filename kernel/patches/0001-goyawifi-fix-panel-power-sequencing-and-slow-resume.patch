@@ -1,7 +1,7 @@
 From 1a6faf99fdee6348205b557e59758b042f8840ca Mon Sep 17 00:00:00 2001
 From: android7 <android7@goyawifi-builder>
 Date: Fri, 6 Nov 2026 01:44:40 +0100
-Subject: [PATCH] goyawifi: fix panel power sequencing and slow resume
+Subject: [PATCH 1/7] goyawifi: fix panel power sequencing and slow resume
 
 - Light the LVDS bridge and backlight only after DSI video is running,
   so the panel is never lit without a picture (white flash at boot and
@@ -21,7 +21,7 @@ Subject: [PATCH] goyawifi: fix panel power sequencing and slow resume
  3 files changed, 81 insertions(+), 17 deletions(-)
 
 diff --git a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
-index 31e48e8d..3d4bfdb4 100755
+index 31e48e8d6..3d4bfdb46 100755
 --- a/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
 +++ b/arch/arm/mach-mmp/onboard/Lcd_mipi2lvds_vx5b3d.c
 @@ -34,13 +34,25 @@ struct pxa168fb_info *fbi_global = NULL;
@@ -159,7 +159,7 @@ index 31e48e8d..3d4bfdb4 100755
  	Vee_cabc->orig_lvds_clk = Vee_cabc->lvds_clk;
  	Vee_cabc->lvds_clk_switching = false;
 diff --git a/drivers/base/power/main.c b/drivers/base/power/main.c
-index 37c019f9..9e463214 100644
+index 37c019f9e..9e4632142 100644
 --- a/drivers/base/power/main.c
 +++ b/drivers/base/power/main.c
 @@ -171,14 +171,12 @@ void device_pm_move_last(struct device *dev)
@@ -200,7 +200,7 @@ index 37c019f9..9e463214 100644
  
  /**
 diff --git a/drivers/video/pxa168fb.c b/drivers/video/pxa168fb.c
-index 54f4edda..051ba8ec 100644
+index 54f4edda2..051ba8ec0 100644
 --- a/drivers/video/pxa168fb.c
 +++ b/drivers/video/pxa168fb.c
 @@ -1690,6 +1690,10 @@ void pxa988_reserve_fb_mem(void)
@@ -227,6 +227,3 @@ index 54f4edda..051ba8ec 100644
  	pr_info("pxa168fb.%d enable -\n", fbi->id);
  	return 0;
  }
--- 
-2.43.0
-

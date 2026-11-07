@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  Power profile for the Galaxy Tab 3 Lite 7.0 (SM-T110): 3600 mAh battery, 7" 1024x600 LCD,
+  dual Cortex-A9 at 312-1205 MHz, SD8777 Wi-Fi/Bluetooth, no modem.
+
+  The tablet has no current sensor, so these are estimates for this class of hardware. They
+  let Android split the measured battery drain between the screen, Wi-Fi and apps. The AOSP
+  placeholder (1000 mAh, about 0.1 mA per part) added up to nothing, and Settings > Battery
+  showed "Battery usage data isn't available".
+-->
+<device name="Android">
+    <item name="none">0</item>
+    <item name="screen.on">110</item>        <!-- panel and backlight at minimum brightness -->
+    <item name="screen.full">360</item>      <!-- additional current at full brightness -->
+    <item name="bluetooth.active">10</item>
+    <item name="bluetooth.on">0.3</item>
+    <item name="wifi.on">4</item>
+    <item name="wifi.active">130</item>
+    <item name="wifi.scan">80</item>
+    <item name="audio">60</item>
+    <item name="video">120</item>
+    <item name="camera.flashlight">0</item>  <!-- no flash -->
+    <item name="camera.avg">350</item>
+    <item name="gps.on">45</item>
+    <item name="radio.active">0</item>       <!-- Wi-Fi only -->
+    <item name="radio.scanning">0</item>
+    <array name="radio.on">
+        <value>0</value>
+        <value>0</value>
+    </array>
+    <array name="cpu.speeds">
+        <value>312000</value>
+        <value>624000</value>
+        <value>1066000</value>
+        <value>1205000</value>
+    </array>
+    <item name="cpu.idle">4</item>           <!-- suspended -->
+    <item name="cpu.awake">40</item>         <!-- awake, CPU idle -->
+    <array name="cpu.active">
+        <value>60</value>
+        <value>110</value>
+        <value>210</value>
+        <value>260</value>
+    </array>
+    <item name="battery.capacity">3600</item>
+</device>

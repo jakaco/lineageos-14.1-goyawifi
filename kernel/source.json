@@ -3,7 +3,7 @@
   "revision": "af48ce5b3b6ceb06963cc4aff0678c01c126c0f0",
   "version": "3.4.113",
   "patch": "patches/linux-3.4.113-goyawifi.patch.xz",
-  "result_tree": "89d202e32e39477caedb534c808cf76fafec4ab2",
+  "result_tree": "9ad65519072322e75c3fdaa98b891eddd098c0ea",
   "config": "config-3.4.113",
   "note": "r1-r4 listed revision fb2f8b6c here by mistake. Every release was built from af48ce5b, the first commit of the same repository."
 }

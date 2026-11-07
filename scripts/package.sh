@@ -19,7 +19,8 @@ if [ -L "$A" ]; then
     # An earlier assembly kept on another disk stays there; only the link goes.
     rm "$A"
 elif [ -e "$A" ]; then
-    mv "$A" "$A.pre-$(date +%Y%m%d-%H%M%S)"
+    # The previous assembly's images were already copied to $O; don't keep it.
+    rm -rf "$A"
 fi
 if [ ! -e "$P/system/framework/arm/boot.art" ]; then
  sed 's/goyawifi-framework/goyawifi/g' "$W/build-art-boot-image.py" > "$R/reports/build-full-art.py"

@@ -1,0 +1,62 @@
+From 5a21466453b5240e149c7b9a799f60198aeaec33 Mon Sep 17 00:00:00 2001
+From: goyawifi <goyawifi@localhost>
+Date: Sat, 7 Nov 2026 15:20:04 +0100
+Subject: [PATCH 6/7] goyawifi: power off the PMIC over polled I2C
+
+Since the 3.4.113 merge, machine_shutdown() stops the other CPU with
+preemption disabled before pm_power_off runs. The interrupt-driven I2C
+write of SW_PDOWN to the 88PM822 no longer completed, so power off left
+the tablet halted with everything powered, draining the battery.
+
+Switch the I2C adapter to PIO first, as the panic path already does, and
+reboot instead of halting if the PMIC is somehow still powered after 1 s.
+---
+ arch/arm/mach-mmp/board-goya.c | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm/mach-mmp/board-goya.c b/arch/arm/mach-mmp/board-goya.c
+index fc9729555..ca5dfe097 100755
+--- a/arch/arm/mach-mmp/board-goya.c
++++ b/arch/arm/mach-mmp/board-goya.c
+@@ -4260,6 +4260,7 @@ extern int i2c_set_pio_mode(void);
+ static void emei_dkb_poweroff(void)
+ {
+ 	unsigned char data;
++	int pd_ret;
+ #ifdef CONFIG_BATTERY_SAMSUNG
+ 	static char *pss[] = {"battery"};
+ 	int i;
+@@ -4319,12 +4320,29 @@ static void emei_dkb_poweroff(void)
+ 
+ 	pr_info("turning off power....\n");
+ 
++	/*
++	 * Since 3.4.113, machine_shutdown() stops the other CPU with preemption
++	 * disabled before we get here, and the interrupt-driven I2C transfer to
++	 * the PMIC no longer completes: the tablet halted with everything
++	 * powered instead of switching off. Talk to the PMIC by polling, as the
++	 * panic path does.
++	 */
++	i2c_set_pio_mode();
++
+ 	/* save power off reason */
+ 	data = PMIC_GENERAL_USE_BOOT_BY_NONE | PMIC_GENERAL_USE_SHUTDOWN_BY_POWEROFF;
+-	pm822_extern_write(PM822_BASE_PAGE, PMIC_GENERAL_USE_REGISTER, data);
+-	data = pm822_extern_read(PM822_BASE_PAGE, PM822_WAKEUP1);
+-	pm822_extern_write(PM822_BASE_PAGE, PM822_WAKEUP1,
+-			   data | PM822_SW_PDOWN);
++	pd_ret = pm822_extern_write(PM822_BASE_PAGE, PMIC_GENERAL_USE_REGISTER, data);
++	pr_emerg("power off: reason write %d\n", pd_ret);
++	pd_ret = pm822_extern_read(PM822_BASE_PAGE, PM822_WAKEUP1);
++	pr_emerg("power off: WAKEUP1 read 0x%x\n", pd_ret);
++	pd_ret = pm822_extern_write(PM822_BASE_PAGE, PM822_WAKEUP1,
++			   (pd_ret < 0 ? 0 : pd_ret) | PM822_SW_PDOWN);
++	pr_emerg("power off: SW_PDOWN write %d\n", pd_ret);
++
++	/* Still running: never stay halted with the battery draining. */
++	mdelay(1000);
++	pr_emerg("power off: still powered after SW_PDOWN, rebooting\n");
++	machine_restart(NULL);
+ }
+ #elif defined(CONFIG_MFD_88PM800)
+ #define PM800_SW_PDOWN			(1 << 5)

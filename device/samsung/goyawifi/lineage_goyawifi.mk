@@ -88,6 +88,7 @@ PRODUCT_COPY_FILES += \
     device/samsung/goyawifi/configs/bluetooth/bt_stack.conf:system/etc/bluetooth/bt_stack.conf \
     device/samsung/goyawifi/configs/bluetooth/bt_did.conf:system/etc/bluetooth/bt_did.conf \
     device/samsung/goyawifi/configs/permissions/goya-camera.xml:system/etc/permissions/goya-camera.xml \
+    device/samsung/goyawifi/configs/permissions/goyawifi-core-hardware.xml:system/etc/permissions/goyawifi-core-hardware.xml \
     device/samsung/goyawifi/configs/idc/sec_touchscreen.idc:system/usr/idc/sec_touchscreen.idc \
     device/samsung/goyawifi/configs/keylayout/gpio-keys.kl:system/usr/keylayout/gpio-keys.kl \
     device/samsung/goyawifi/configs/goya-audio-setup.sh:system/etc/goya-audio-setup.sh \

@@ -1,0 +1,28 @@
+From ad2c4173ba2616f41f88adc7f4c0d34f9e63710f Mon Sep 17 00:00:00 2001
+From: android7 <android7@goyawifi-builder>
+Date: Fri, 6 Nov 2026 20:32:46 +0100
+Subject: [PATCH 4/7] alarmtimer: drop the WARN_ON for alarms due within a
+ second
+
+alarmtimer_suspend() already refuses to suspend when an alarm is due in
+under 2 s. The WARN_ON printed a full stack trace on most suspend
+attempts on Android, where alarms are frequent. Later mainline kernels
+removed it too.
+---
+ kernel/time/alarmtimer.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/kernel/time/alarmtimer.c b/kernel/time/alarmtimer.c
+index b1127300d..c1958131a 100644
+--- a/kernel/time/alarmtimer.c
++++ b/kernel/time/alarmtimer.c
+@@ -253,8 +253,7 @@ static int alarmtimer_suspend(struct device *dev)
+ 	if (min.tv64 == 0)
+ 		return 0;
+ 
+-	/* XXX - Should we enforce a minimum sleep time? */
+-	WARN_ON(min.tv64 < NSEC_PER_SEC);
++	/* An alarm is due within 2 s: stay awake for it instead of suspending. */
+ 	if (ktime_to_ns(min) < 2 * NSEC_PER_SEC) {
+ 		__pm_wakeup_event(ws, 2 * MSEC_PER_SEC);
+ 		return -EBUSY;

@@ -16,7 +16,7 @@ xz -dc /path/to/this/repo/kernel/patches/linux-3.4.113-goyawifi.patch.xz | git a
 ANDROID7_TOOLCHAIN_PREFIX=/path/to/arm-linux-androideabi-4.7/bin/arm-linux-androideabi- scripts/build-kernel.sh
 ```
 
-The patch turns the pinned commit into the exact r5 tree (git tree `89d202e3`). `kernel/patches/0001-*.patch` is the r5 display and resume fix on its own, for reading.
+The patch turns the pinned commit into the exact release tree (git tree `9ad65519`). `kernel/patches/000*.patch` are this port's latest kernel changes on their own, for reading.
 
 ## 2. Android
 

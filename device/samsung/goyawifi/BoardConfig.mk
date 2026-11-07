@@ -44,6 +44,8 @@ BOARD_USE_BGRA_8888 := true
 # Wi-Fi: Marvell SD8777 on cfg80211
 WPA_SUPPLICANT_VERSION := VER_0_8_X
 BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+# Passes Android's Wi-Fi country code to the driver (wpa_supplicant_lib).
+BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_goyawifi
 WIFI_DRIVER_STATE_CTRL_PARAM := /sys/class/rfkill/rfkill0/state
 WIFI_DRIVER_STATE_ON := 1
 WIFI_DRIVER_STATE_OFF := 0

@@ -9,7 +9,7 @@ Unofficial LineageOS 14.1 (Android 7.1.2) for the Samsung Galaxy Tab 3 Lite 7.0 
 | GPU | Vivante GC1000 with the stock Android 4.2 blobs |
 | Status | Experimental, tested on one tablet |
 
-**SM-T110 only.** Don't flash this on the SM-T111, T113, T116 or any other model. The installer checks the model and partition layout and stops if they don't match.
+**Made and tested on the SM-T110.** The installer also accepts the SM-T111 with a warning (untested; no calls, SMS or mobile data). It refuses the Galaxy Tab 3 7.0 (T210/T211/T217), the T113, T116 and anything else, and stops if the partition layout doesn't match the T110's. Back up System and Boot in TWRP before flashing.
 
 ## Download
 
@@ -30,16 +30,17 @@ Get the latest zip from [Releases](https://github.com/jakaco/lineageos-14.1-goya
 - MTP and PTP
 - Charging, including the charging screen when off
 - Deep sleep
+- Root (LineageOS su)
+- Google apps (OpenGApps pico)
 
 ## Known issues
 
-- The launcher logs an "app not responding" shortly after each boot.
 - The boot animation crashes as it closes. This is harmless.
 - USB goes back to its default mode after each boot, so choose File transfer each time.
 - microSD writes are slow, about 2.6 MB/s.
-- Wi-Fi uses the US region, so channels 12 and 13 aren't available.
-- GPS has no SUPL or XTRA assistance, and fix times read 18 seconds ahead.
-- Per-app battery statistics are incomplete.
+- Wi-Fi uses the US region (channels 1–11) unless you set your country. Android 7 has no menu for it, so set it once with ADB, for example `adb shell settings put global wifi_country_code DE`, then reboot. Most countries then get channels 1–13.
+- GPS has no SUPL or XTRA assistance. Fix times read 18 seconds ahead before r6; r6 corrects that, but the correction hasn't been confirmed with a real fix yet.
+- Per-app battery use in Settings is an estimate. The tablet can't measure current, so Android splits the drain using typical values for the screen, CPU and Wi-Fi.
 - SELinux is disabled and `ro.debuggable=1` is set (ADB still needs approval on the tablet). The vendor kernel and blobs predate SELinux enforcing, and `ro.debuggable=0` makes the framework restart.
 - Don't use "Format as internal" for SD cards. Adoptable storage needs encryption that hasn't been tested.
 
@@ -56,7 +57,21 @@ You need TWRP 3.x on the tablet.
 
 The installer writes SYSTEM and KERNEL only. It never touches Recovery or your data partition, and it checks every image after writing.
 
-Google apps aren't included and haven't been tested.
+## Root
+
+Use LineageOS root:
+
+1. Install `addonsu-14.1-arm-goyawifi.zip` from the release in TWRP. LineageOS's own addonsu zip won't install here, because this TWRP can't set SELinux labels.
+2. In Settings > About tablet, tap Build number 7 times.
+3. Set Settings > Developer options > Root access to Apps, or Apps and ADB.
+
+Magisk 25.2 boots and its daemon runs, but root through it doesn't work yet: the app shows "Installed: N/A" and its Superuser prompt is invisible. Magisk 31 hangs at the Samsung logo.
+
+## Google apps
+
+[OpenGApps](https://opengapps.org) ARM 7.1 pico works. Install it in TWRP right after the ROM, before the first boot, together with a data wipe. The first boot then takes about 6 to 7 minutes.
+
+Gesture typing isn't available: Google's gesture library uses an instruction this CPU doesn't have, so the keyboard ignores it. Reinstall GApps after every ROM update, because the update replaces SYSTEM.
 
 ## Source
 

@@ -1,49 +1,116 @@
 #!/sbin/sh
 # SPDX-License-Identifier: Apache-2.0
-# LineageOS 14.1 installer for the SM-T110 (goyawifi). Runs as root in TWRP.
-# Writes SYSTEM and KERNEL only and verifies both after writing.
+# LineageOS 14.1 installer for the Galaxy Tab 3 Lite 7.0 (SM-T110, goyawifi).
+# Writes SYSTEM and KERNEL, verifies both, and leaves RECOVERY and DATA alone.
 OUTFD="$2"
 ZIPFILE="$3"
 BB=/sbin/busybox
 SYSTEM=/dev/block/mmcblk0p15
 KERNEL=/dev/block/mmcblk0p10
-RELEASE=r5
-SYSTEM_GZ_SHA=341b7bfb5f72162416031c4732ceb88f8de72c415b49f789bd1e97692c7efdfb
-SYSTEM_RAW_SHA=ebab15bbe4f9d5f27486e000d1968a1d60dfc25b2d02a8bf5e8e002e8e8cf455
-KERNEL_SHA=058eb6781513d10c62cb16974bec59151b942b5d0efe4f16a7c540174e63e55e
+BYNAME=/dev/block/platform/sdhci-pxav3.2/by-name
+RELEASE=r6
+SYSTEM_GZ_SHA=00a8311e14b9de268fdecc7c9d96fcce9a60badb686daa5010b1822c0e33a721
+SYSTEM_RAW_SHA=64afac41301abc55d581d36e80f06aafacffbfd9dea4b17a45294fd466cee1de
+KERNEL_SHA=b50cebfcf895843ac10c0e9840b4e3d3e889f2de6c9cc77b1a3a6ceae158bf45
 
 ui_print() {
     echo "ui_print $*" >&$OUTFD
     echo "ui_print" >&$OUTFD
 }
+# Advance the progress bar by FRACTION, animated over SECONDS.
+progress() { echo "progress $1 $2" >&$OUTFD; }
+set_progress() { echo "set_progress $1" >&$OUTFD; }
 abort() {
-    ui_print "ERROR: $*"
+    ui_print " "
+    ui_print "! $*"
+    ui_print "! Nothing was written."
     exit 1
 }
-ui_print "LineageOS 14.1 for Galaxy Tab 3 Lite 7.0 (SM-T110), $RELEASE"
-if [ ! -x "$BB" ]; then abort "TWRP BusyBox missing"; fi
+fail() {
+    ui_print " "
+    ui_print "! $*"
+    ui_print "! Don't reboot: restore your backup or flash again."
+    exit 1
+}
+sha() { "$BB" sha256sum | cut -d' ' -f1; }
+
+ui_print " "
+ui_print "LineageOS 14.1 | $RELEASE"
+ui_print "Galaxy Tab 3 Lite 7.0"
+ui_print " "
+set_progress 0
+
+# Device ------------------------------------------------------------------
+ui_print "- Checking device"
+[ -x "$BB" ] || abort "TWRP BusyBox is missing"
 MODEL="$(getprop ro.product.model)"
 DEVICE="$(getprop ro.product.device)"
-[ "$MODEL" = "SM-T110" ] || abort "Wrong model: $MODEL"
-[ "$DEVICE" = "goyawifi" ] || abort "Wrong device: $DEVICE"
-[ "$("$BB" readlink /dev/block/platform/sdhci-pxav3.2/by-name/SYSTEM)" = "$SYSTEM" ] || abort "SYSTEM partition map mismatch"
-[ "$("$BB" readlink /dev/block/platform/sdhci-pxav3.2/by-name/KERNEL)" = "$KERNEL" ] || abort "KERNEL partition map mismatch"
+# TWRP builds report the SM-T110 as goyawifi or goya. The SM-T111 (goya3g) is the same
+# board with a modem. The SM-T210/T211 (lt02) share the chip but are wired differently, so
+# this kernel can't drive them; the T113/T116/T217 use other chips. The partition checks
+# below are the real gate.
+case "$MODEL" in
+    SM-T110*) VARIANT=t110 ;;
+    SM-T111*) VARIANT=t111 ;;
+    SM-T21*) abort "The $MODEL (Galaxy Tab 3 7.0) is wired differently and isn't supported" ;;
+    SM-T113*|SM-T116*|SM-T217*) abort "The $MODEL uses a different chip and isn't supported" ;;
+    *)
+        case "$DEVICE" in
+            goyawifi|goya) VARIANT=t110 ;;
+            goya3g) VARIANT=t111 ;;
+            lt02*) abort "The Galaxy Tab 3 7.0 ($DEVICE) is wired differently and isn't supported" ;;
+            *) abort "This zip is for the Galaxy Tab 3 Lite 7.0 (found ${MODEL:-?}, ${DEVICE:-?})" ;;
+        esac
+        ;;
+esac
+case "$VARIANT" in
+    t111)
+        ui_print " "
+        ui_print "! ${MODEL:-$DEVICE} (3G) detected. This build is"
+        ui_print "! for Wi-Fi models: calls, SMS and mobile"
+        ui_print "! data won't work. Not tested on this model."
+        ui_print " "
+        ;;
+esac
+[ "$("$BB" readlink $BYNAME/SYSTEM)" = "$SYSTEM" ] || abort "Unexpected partition layout (SYSTEM)"
+[ "$("$BB" readlink $BYNAME/KERNEL)" = "$KERNEL" ] || abort "Unexpected partition layout (KERNEL)"
 [ "$(blockdev --getsize64 "$SYSTEM")" = "1594884096" ] || abort "Unexpected SYSTEM size"
 [ "$(blockdev --getsize64 "$KERNEL")" = "16777216" ] || abort "Unexpected KERNEL size"
+set_progress 0.02
 
-system_zip_sha=$("$BB" unzip -p "$ZIPFILE" system.ext4.gz | sha256sum | cut -d' ' -f1)
-[ "$system_zip_sha" = "$SYSTEM_GZ_SHA" ] || abort "SYSTEM payload checksum mismatch"
-kernel_zip_sha=$("$BB" unzip -p "$ZIPFILE" kernel-partition.img | sha256sum | cut -d' ' -f1)
-[ "$kernel_zip_sha" = "$KERNEL_SHA" ] || abort "KERNEL payload checksum mismatch"
-if grep -q " /system " /proc/mounts; then umount /system || abort "Could not unmount SYSTEM"; fi
-ui_print "Device and payload checks passed. Writing SYSTEM..."
-"$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -t || abort "Compressed SYSTEM image is invalid"
-"$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -dc > "$SYSTEM" || abort "SYSTEM write failed"
+# Package ------------------------------------------------------------------
+ui_print "- Verifying package"
+progress 0.10 45
+[ "$("$BB" unzip -p "$ZIPFILE" system.ext4.gz | sha)" = "$SYSTEM_GZ_SHA" ] || abort "Package is damaged (system), download it again"
+[ "$("$BB" unzip -p "$ZIPFILE" kernel-partition.img | sha)" = "$KERNEL_SHA" ] || abort "Package is damaged (kernel), download it again"
+set_progress 0.12
+
+# System -------------------------------------------------------------------
+grep -q " /system " /proc/mounts && { umount /system || abort "Could not unmount /system"; }
+ui_print "- Flashing system (about 5 minutes)"
+progress 0.63 300
+"$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -dc > "$SYSTEM" || fail "Writing system failed"
 sync
-[ "$("$BB" sha256sum "$SYSTEM" | cut -d' ' -f1)" = "$SYSTEM_RAW_SHA" ] || abort "SYSTEM readback checksum mismatch"
-ui_print "SYSTEM verified. Writing KERNEL..."
-"$BB" unzip -p "$ZIPFILE" kernel-partition.img | dd of="$KERNEL" bs=1048576 || abort "KERNEL write failed"
+set_progress 0.75
+ui_print "- Verifying system"
+progress 0.15 80
+if [ "$(sha < "$SYSTEM")" != "$SYSTEM_RAW_SHA" ]; then
+    ui_print "  Verification failed, flashing system again"
+    "$BB" unzip -p "$ZIPFILE" system.ext4.gz | "$BB" gzip -dc > "$SYSTEM" || fail "Writing system failed"
+    sync
+    [ "$(sha < "$SYSTEM")" = "$SYSTEM_RAW_SHA" ] || fail "System verification failed twice"
+fi
+set_progress 0.92
+
+# Kernel -------------------------------------------------------------------
+ui_print "- Flashing kernel"
+"$BB" unzip -p "$ZIPFILE" kernel-partition.img | dd of="$KERNEL" bs=1048576 2>/dev/null || fail "Writing kernel failed"
 sync
-[ "$("$BB" sha256sum "$KERNEL" | cut -d' ' -f1)" = "$KERNEL_SHA" ] || abort "KERNEL readback checksum mismatch"
-ui_print "Install complete. USER and RECOVERY were not written. Reboot System."
+[ "$(sha < "$KERNEL")" = "$KERNEL_SHA" ] || fail "Kernel verification failed"
+set_progress 1
+
+ui_print "- Done"
+ui_print " "
+ui_print "Google apps and root (addonsu) go on now, before rebooting."
+ui_print " "
 exit 0

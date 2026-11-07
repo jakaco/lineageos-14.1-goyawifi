@@ -58,7 +58,7 @@ index fc14796..cee7c4a 100644
      int result = 0;
      property_audit_data audit_data;
 diff --git a/init/service.cpp b/init/service.cpp
-index a5334f4..4958997 100644
+index a5334f4..53750e6 100644
 --- a/init/service.cpp
 +++ b/init/service.cpp
 @@ -344,6 +344,7 @@ bool Service::Start() {
@@ -91,3 +91,19 @@ index a5334f4..4958997 100644
  
              int s = create_socket(si.name.c_str(), socket_type, si.perm,
                                    si.uid, si.gid, socketcon);
+@@ -454,6 +461,7 @@ bool Service::Start() {
+                 _exit(127);
+             }
+         }
++#ifndef GOYAWIFI_INIT_BRINGUP_NO_SELINUX
+         if (!seclabel_.empty()) {
+             if (setexeccon(seclabel_.c_str()) < 0) {
+                 ERROR("cannot setexeccon('%s'): %s\n",
+@@ -461,6 +469,7 @@ bool Service::Start() {
+                 _exit(127);
+             }
+         }
++#endif
+ 
+         std::vector<std::string> expanded_args;
+         std::vector<char*> strs;

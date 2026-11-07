@@ -1,0 +1,89 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 86fc53b..5275c71 100755
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -1696,7 +1696,10 @@
+         <activity android:name=".notification.RedactionInterstitial"
+             android:theme="@style/SetupWizardTheme.Light" />
+ 
++        <!-- goyawifi: same theme as RedactionInterstitial; without it the GlifLayout
++             inflate fails and ACTION_APP_NOTIFICATION_REDACTION crashed Settings. -->
+         <activity android:name=".notification.RedactionSettingsStandalone"
++                  android:theme="@style/SetupWizardTheme.Light"
+                   android:exported="true">
+             <intent-filter android:priority="1">
+                 <action android:name="android.settings.ACTION_APP_NOTIFICATION_REDACTION" />
+diff --git a/src/com/android/settings/SecuritySettings.java b/src/com/android/settings/SecuritySettings.java
+index f92ec7e..9017714 100644
+--- a/src/com/android/settings/SecuritySettings.java
++++ b/src/com/android/settings/SecuritySettings.java
+@@ -316,6 +316,7 @@ public class SecuritySettings extends SettingsPreferenceFragment
+         Preference iccLock = root.findPreference(KEY_SIM_LOCK_SETTINGS);
+ 
+         if (!mIsAdmin
++                || b == null // no carrier config service: Wi-Fi only, no SIM
+                 || b.getBoolean(CarrierConfigManager.KEY_HIDE_SIM_LOCK_SETTINGS_BOOL)) {
+             root.removePreference(iccLockGroup);
+         } else {
+diff --git a/src/com/android/settings/search/Index.java b/src/com/android/settings/search/Index.java
+index 377713e..7b2b1fb 100644
+--- a/src/com/android/settings/search/Index.java
++++ b/src/com/android/settings/search/Index.java
+@@ -89,6 +89,12 @@ import static android.provider.SearchIndexablesContract.COLUMN_INDEX_XML_RES_RES
+ 
+ public class Index {
+ 
++    // goyawifi: index on a dedicated thread. On the shared AsyncTask queue a slow
++    // remote search provider (Play Services on a slow CPU) blocked every other
++    // Settings task, including the dashboard, which then stayed empty.
++    private static final java.util.concurrent.Executor sIndexExecutor =
++            java.util.concurrent.Executors.newSingleThreadExecutor();
++
+     private static final String LOG_TAG = "Index";
+ 
+     // Those indices should match the indices of SELECT_COLUMNS !
+@@ -291,7 +297,7 @@ public class Index {
+ 
+     public long addSavedQuery(String query){
+         final SaveSearchQueryTask task = new SaveSearchQueryTask();
+-        task.execute(query);
++        task.executeOnExecutor(sIndexExecutor, query);
+         try {
+             return task.get();
+         } catch (InterruptedException e) {
+@@ -304,7 +310,7 @@ public class Index {
+     }
+ 
+     public void update() {
+-        AsyncTask.execute(new Runnable() {
++        sIndexExecutor.execute(new Runnable() {
+             @Override
+             public void run() {
+                 final Intent intent = new Intent(SearchIndexablesContract.PROVIDER_INTERFACE);
+@@ -493,7 +499,7 @@ public class Index {
+         }
+         res.context = mContext;
+         res.enabled = includeInSearchResults;
+-        AsyncTask.execute(new Runnable() {
++        sIndexExecutor.execute(new Runnable() {
+             @Override
+             public void run() {
+                 if (rebuild) {
+@@ -508,7 +514,7 @@ public class Index {
+     }
+ 
+     public void updateFromSearchIndexableData(SearchIndexableData data) {
+-        AsyncTask.execute(new Runnable() {
++        sIndexExecutor.execute(new Runnable() {
+             @Override
+             public void run() {
+                 addIndexableData(data);
+@@ -550,7 +556,7 @@ public class Index {
+         synchronized (mDataToProcess) {
+             final UpdateIndexTask task = new UpdateIndexTask();
+             UpdateData copy = mDataToProcess.copy();
+-            task.execute(copy);
++            task.executeOnExecutor(sIndexExecutor, copy);
+             mDataToProcess.clear();
+         }
+     }

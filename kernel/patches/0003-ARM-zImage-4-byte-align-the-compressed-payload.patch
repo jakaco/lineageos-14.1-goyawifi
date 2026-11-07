@@ -1,0 +1,22 @@
+From 32bcde64bcc4c9bc3a60dad18824589d5020f105 Mon Sep 17 00:00:00 2001
+From: android7 <android7@goyawifi-builder>
+Date: Fri, 6 Nov 2026 16:48:27 +0100
+Subject: [PATCH 3/7] ARM: zImage: 4-byte align the compressed payload
+
+Magisk and other zImage tools scan for the payload at 4-byte aligned
+offsets. Unaligned, they latch onto a false gzip signature inside it and
+fail to unpack the boot image.
+---
+ arch/arm/boot/compressed/piggy.gzip.S | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm/boot/compressed/piggy.gzip.S b/arch/arm/boot/compressed/piggy.gzip.S
+index a68adf91a..f2cd2f405 100644
+--- a/arch/arm/boot/compressed/piggy.gzip.S
++++ b/arch/arm/boot/compressed/piggy.gzip.S
+@@ -1,4 +1,5 @@
+ 	.section .piggydata,#alloc
++	.p2align 2		@ goyawifi: 4-byte aligned payload, as Magisk and other zImage tools expect
+ 	.globl	input_data
+ input_data:
+ 	.incbin	"arch/arm/boot/compressed/piggy.gzip"

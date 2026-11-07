@@ -40,8 +40,16 @@ static CompatGpsDevice compat_device;
 /* The receiver firmware predates a GPS week rollover and reports dates 1024 weeks early. */
 #define GPS_ROLLOVER_MS 619315200000LL
 #define GPS_PLAUSIBLE_MS 1546300800000LL /* 2019-01-01 UTC */
+/*
+ * The firmware also reports GPS time, which runs ahead of UTC by the leap seconds since 1980
+ * (18 s since 2017), without subtracting them. Correct that when the first fix of a session is
+ * that far ahead of the system clock, so firmware that already applies them isn't shifted twice.
+ */
+#define GPS_UTC_LEAP_MS 18000LL
+#define GPS_UTC_TOLERANCE_MS 2000LL
 static gps_location_callback framework_location_cb;
 static int rollover_logged;
+static long long leap_correction_ms;
 
 static void compat_location_cb(GpsLocation *location) {
     if (framework_location_cb == NULL || location == NULL) return;
@@ -54,11 +62,16 @@ static void compat_location_cb(GpsLocation *location) {
     if (!rollover_logged) {
         struct timespec now;
         clock_gettime(CLOCK_REALTIME, &now);
-        const long long wall = (long long)now.tv_sec * 1000LL;
-        LOGI("first fix: rollovers corrected %d, offset from system clock %lld ms", weeks,
-             (long long)fixed.timestamp - wall);
+        const long long wall = (long long)now.tv_sec * 1000LL + now.tv_nsec / 1000000LL;
+        const long long offset = (long long)fixed.timestamp - wall;
+        const long long leap_error = offset - GPS_UTC_LEAP_MS;
+        leap_correction_ms = (leap_error > -GPS_UTC_TOLERANCE_MS && leap_error < GPS_UTC_TOLERANCE_MS)
+                ? GPS_UTC_LEAP_MS : 0;
+        LOGI("first fix: rollovers corrected %d, offset from system clock %lld ms, "
+             "leap seconds subtracted %lld ms", weeks, offset, leap_correction_ms);
         rollover_logged = 1;
     }
+    fixed.timestamp -= leap_correction_ms;
     framework_location_cb(&fixed);
 }
 

@@ -1,0 +1,26 @@
+diff --git a/java/src/com/android/inputmethod/latin/utils/JniUtils.java b/java/src/com/android/inputmethod/latin/utils/JniUtils.java
+index 448a249..47b1669 100644
+--- a/java/src/com/android/inputmethod/latin/utils/JniUtils.java
++++ b/java/src/com/android/inputmethod/latin/utils/JniUtils.java
+@@ -25,15 +25,13 @@ public final class JniUtils {
+ 
+     public static boolean mHaveGestureLib = false;
+     static {
++        // goyawifi: never load Google's gesture library (jni_latinimegoogle) that GApps
++        // installs. It is built with hardware divide, which the Cortex-A9 lacks, and the
++        // keyboard dies with SIGILL. Use LatinIME's own library, built for this CPU.
+         try {
+-            System.loadLibrary(JniLibName.JNI_LIB_NAME2);
+-            mHaveGestureLib = true;
+-        } catch (UnsatisfiedLinkError ue) {
+-            try {
+-                System.loadLibrary(JniLibName.JNI_LIB_NAME);
+-            } catch (UnsatisfiedLinkError ule) {
+-                Log.e(TAG, "Could not load native library " + JniLibName.JNI_LIB_NAME, ule);
+-            }
++            System.loadLibrary(JniLibName.JNI_LIB_NAME);
++        } catch (UnsatisfiedLinkError ule) {
++            Log.e(TAG, "Could not load native library " + JniLibName.JNI_LIB_NAME, ule);
+         }
+     }
+ 

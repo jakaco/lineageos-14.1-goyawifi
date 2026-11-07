@@ -1,0 +1,82 @@
+From 65d6c84d133699125fdbecc479de1865829abdb6 Mon Sep 17 00:00:00 2001
+From: android7 <android7@goyawifi-builder>
+Date: Fri, 6 Nov 2026 16:12:41 +0100
+Subject: [PATCH 2/7] goyawifi: boot ramdisks of any size
+
+The bootloader always passes a 16 MiB initrd span. Stop unpacking at the
+first non-padding byte after a complete archive instead of rejecting the
+image, and keep the loader's span instead of trimming it to the fixed
+goyawifi.initrd_size. Repacked ramdisks (for example Magisk) now boot.
+---
+ arch/arm/mm/init.c | 13 ++++++-------
+ init/initramfs.c   | 16 ++++++++++++++++
+ 2 files changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm/mm/init.c b/arch/arm/mm/init.c
+index e111743e4..9cd462329 100644
+--- a/arch/arm/mm/init.c
++++ b/arch/arm/mm/init.c
+@@ -365,14 +365,13 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
+ 	memblock_reserve(__pa(_stext), _end - _stext);
+ #endif
+ #ifdef CONFIG_BLK_DEV_INITRD
+-	if (goyawifi_initrd_size && goyawifi_initrd_size < phys_initrd_size) {
+-		pr_info("goyawifi: initrd span %lu -> %lu bytes\n",
++	/*
++	 * goyawifi: keep the loader's full initrd span. initramfs stops at the
++	 * end of the archive, so the ramdisk size no longer has to be fixed.
++	 */
++	if (goyawifi_initrd_size)
++		pr_info("goyawifi: initrd span %lu bytes (goyawifi.initrd_size=%lu ignored)\n",
+ 			phys_initrd_size, goyawifi_initrd_size);
+-		phys_initrd_size = goyawifi_initrd_size;
+-	} else if (goyawifi_initrd_size) {
+-		pr_warn("goyawifi: ignoring non-shrinking initrd override %lu\n",
+-			goyawifi_initrd_size);
+-	}
+ 	if (phys_initrd_size &&
+ 	    !memblock_is_region_memory(phys_initrd_start, phys_initrd_size)) {
+ 		pr_err("INITRD: 0x%08lx+0x%08lx is not a memory region - disabling initrd\n",
+diff --git a/init/initramfs.c b/init/initramfs.c
+index 8216c303b..e4cff8cfc 100644
+--- a/init/initramfs.c
++++ b/init/initramfs.c
+@@ -411,6 +411,8 @@ static unsigned my_inptr;   /* index of next byte to be processed in inbuf */
+ 
+ #include <linux/decompress/generic.h>
+ 
++static int __initdata archives_done;
++
+ static char * __init unpack_to_rootfs(char *buf, unsigned len)
+ {
+ 	int written, res;
+@@ -428,8 +430,20 @@ static char * __init unpack_to_rootfs(char *buf, unsigned len)
+ 	state = Start;
+ 	this_header = 0;
+ 	message = NULL;
++	archives_done = 0;
+ 	while (!message && len) {
+ 		loff_t saved_offset = this_header;
++#ifdef CONFIG_MACH_GOYA
++		/*
++		 * goyawifi: the bootloader always passes a 16 MiB initrd span, and
++		 * whatever follows the ramdisk in that span is leftover data. Once a
++		 * complete archive has been unpacked, stop at the first byte that is
++		 * not padding instead of rejecting the whole image. This lets the
++		 * kernel boot ramdisks of any size (for example Magisk-patched ones).
++		 */
++		if (archives_done && *buf && state == Reset)
++			break;
++#endif
+ 		if (*buf == '0' && !(this_header & 3)) {
+ 			state = Start;
+ 			written = write_buffer(buf, len);
+@@ -461,6 +475,8 @@ static char * __init unpack_to_rootfs(char *buf, unsigned len)
+ 			error("junk in compressed archive");
+ 		if (state != Reset)
+ 			error("junk in compressed archive");
++		else
++			archives_done++;
+ 		this_header = saved_offset + my_inptr;
+ 		buf += my_inptr;
+ 		len -= my_inptr;

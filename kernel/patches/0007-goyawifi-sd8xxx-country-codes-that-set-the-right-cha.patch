@@ -1,0 +1,66 @@
+From 2c881cc49267a310edb58cfdc0241dfcce1ef148 Mon Sep 17 00:00:00 2001
+From: goyawifi <goyawifi@localhost>
+Date: Sat, 7 Nov 2026 16:21:40 +0100
+Subject: [PATCH 7/7] goyawifi: sd8xxx country codes that set the right
+ channels
+
+The driver's table maps only a few countries to firmware regions and gave
+every other country the US region (channels 1-11). Use ETSI (channels 1-13)
+for unlisted countries, keeping Taiwan and Puerto Rico on FCC; the kernel
+regulatory database still limits each country to its own channels.
+
+The COUNTRY private command also loaded a per-country power table that this
+firmware doesn't ship, and the firmware loader waited its full 60 s timeout,
+holding up Wi-Fi start. Skip it; the regulatory hint sets the region.
+---
+ .../marvell/sd8787/wlan_src/mlinux/moal_eth_ioctl.c | 11 ++++++-----
+ drivers/marvell/sd8787/wlan_src/mlinux/moal_ioctl.c | 13 +++++++++++--
+ 2 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/marvell/sd8787/wlan_src/mlinux/moal_eth_ioctl.c b/drivers/marvell/sd8787/wlan_src/mlinux/moal_eth_ioctl.c
+index f7c35d4b5..70b79eb84 100755
+--- a/drivers/marvell/sd8787/wlan_src/mlinux/moal_eth_ioctl.c
++++ b/drivers/marvell/sd8787/wlan_src/mlinux/moal_eth_ioctl.c
+@@ -9062,11 +9062,12 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
+ 		memcpy(country_code, buf + strlen("COUNTRY") + 1,
+ 		       strlen(buf) - strlen("COUNTRY") - 1);
+ 		PRINTM(MIOCTL, "Set COUNTRY %s\n", country_code);
+-		if (MLAN_STATUS_SUCCESS !=
+-		    woal_request_country_power_table(priv, country_code)) {
+-			ret = -EFAULT;
+-			goto done;
+-		}
++		/*
++		 * goyawifi: no per-country txpower_XX.bin tables ship with this
++		 * firmware. Requesting one made the firmware loader wait its full
++		 * 60 s timeout and held up Wi-Fi start; the regulatory hint below
++		 * still sets the channels and the firmware region.
++		 */
+ #ifdef STA_CFG80211
+ 		if (IS_STA_CFG80211(cfg80211_wext)) {
+ 			PRINTM(MIOCTL, "Notify country code=%s\n",
+diff --git a/drivers/marvell/sd8787/wlan_src/mlinux/moal_ioctl.c b/drivers/marvell/sd8787/wlan_src/mlinux/moal_ioctl.c
+index c41e43e85..2c9df9866 100755
+--- a/drivers/marvell/sd8787/wlan_src/mlinux/moal_ioctl.c
++++ b/drivers/marvell/sd8787/wlan_src/mlinux/moal_ioctl.c
+@@ -133,9 +133,18 @@ region_string_2_region_code(char *region_string)
+ 			return region_code_mapping[i].code;
+ 		}
+ 	}
+-	/* Default is US */
++	/*
++	 * goyawifi: the table only knows a few countries and everything else
++	 * got the US region (channels 1-11). Most countries use ETSI rules
++	 * (channels 1-13); the kernel regulatory database still limits each
++	 * country to its own channels and power. Keep the 1-11 countries on FCC.
++	 */
++	if (!memcmp(region_string, "TW", 2) || !memcmp(region_string, "PR", 2)) {
++		LEAVE();
++		return region_code_mapping[0].code;
++	}
+ 	LEAVE();
+-	return region_code_mapping[0].code;
++	return 0x30;		/* ETSI */
+ }
+ 
+ /**

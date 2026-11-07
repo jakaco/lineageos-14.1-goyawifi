@@ -1,5 +1,56 @@
+diff --git a/core/java/android/os/GraphicsEnvironment.java b/core/java/android/os/GraphicsEnvironment.java
+index e4cdbce0..10a6875f 100644
+--- a/core/java/android/os/GraphicsEnvironment.java
++++ b/core/java/android/os/GraphicsEnvironment.java
+@@ -17,6 +17,7 @@
+ package android.os;
+ 
+ import android.content.Context;
++import android.content.Intent;
+ import android.content.pm.ApplicationInfo;
+ import android.content.pm.PackageManager;
+ import android.opengl.EGL14;
+@@ -37,6 +38,17 @@ public final class GraphicsEnvironment {
+     public static void setupGraphicsEnvironment(Context context) {
+         chooseDriver(context);
+ 
++        // goyawifi: devices that can't preload GL in zygote run this early init only for the home
++        // app and persistent processes (SystemUI), which start behind the lock screen and draw
++        // right after unlock. Every app process ran it before, including background ones that
++        // never draw; at boot and unlock that meant ~20 processes setting up the GPU driver at
++        // once, which stalled the UI for up to a minute. Other apps set up EGL with their first
++        // frame instead.
++        if (SystemProperties.getBoolean("ro.zygote.disable_gl_preload", false)
++                && !isHomeOrPersistent(context)) {
++            return;
++        }
++
+         // Now that we've figured out which driver to use for this process, load and initialize it.
+         // This can take multiple frame periods, and it would otherwise happen as part of the first
+         // frame, increasing first-frame latency. Starting it here, as a low-priority background
+@@ -50,6 +62,20 @@ public final class GraphicsEnvironment {
+         eglInitThread.start();
+     }
+ 
++    private static boolean isHomeOrPersistent(Context context) {
++        ApplicationInfo ai = context.getApplicationInfo();
++        if ((ai.flags & ApplicationInfo.FLAG_PERSISTENT) != 0) {
++            return true;
++        }
++        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
++                .setPackage(context.getPackageName());
++        try {
++            return !context.getPackageManager().queryIntentActivities(home, 0).isEmpty();
++        } catch (RuntimeException e) {
++            return false;
++        }
++    }
++
+     private static void chooseDriver(Context context) {
+         String driverPackageName = SystemProperties.get(PROPERTY_GFX_DRIVER);
+         if (driverPackageName == null || driverPackageName.isEmpty()) {
 diff --git a/libs/hwui/Properties.cpp b/libs/hwui/Properties.cpp
-index 6f68c2b..599da5d 100644
+index 6f68c2bd..599da5d2 100644
 --- a/libs/hwui/Properties.cpp
 +++ b/libs/hwui/Properties.cpp
 @@ -143,6 +143,9 @@ bool Properties::load() {
@@ -12,8 +63,23 @@ index 6f68c2b..599da5d 100644
  
      textGamma = property_get_float(PROPERTY_TEXT_GAMMA, DEFAULT_TEXT_GAMMA);
  
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index f019795f..f6e7cc89 100644
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -434,7 +434,9 @@ public final class ActivityManagerService extends ActivityManagerNative
+     static final int PROC_START_TIMEOUT = 10*1000;
+     // How long we wait for an attached process to publish its content providers
+     // before we decide it must be hung.
+-    static final int CONTENT_PROVIDER_PUBLISH_TIMEOUT = 10*1000;
++    // goyawifi: large apps such as Play Services need more than 10 s to start on this CPU;
++    // at 10 s they were killed and restarted in a loop while a client kept waiting.
++    static final int CONTENT_PROVIDER_PUBLISH_TIMEOUT = 60*1000;
+ 
+     // How long we will retain processes hosting content providers in the "last activity"
+     // state before allowing them to drop down to the regular cached LRU list.  This is
 diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
-index f4f0bb1..49d5da7 100644
+index f4f0bb1f..49d5da7a 100644
 --- a/services/java/com/android/server/SystemServer.java
 +++ b/services/java/com/android/server/SystemServer.java
 @@ -989,7 +989,10 @@ public final class SystemServer {
